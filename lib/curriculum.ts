@@ -14,6 +14,9 @@ export type Course = {
   isNonAcademic: boolean;
   prerequisites: string[];
   corequisites: string[];
+  prerequisiteGroups: string[][];
+  corequisiteGroups: string[][];
+  requirementWarnings: string[];
   status: Status;
   description: string;
   isPinned?: boolean;
@@ -49,31 +52,43 @@ const STOP_WORDS = new Set([
   "1st", "2nd", "3rd", "4th", "5th",
 ]);
 
-const requisiteCodes = (value: unknown, knownCodes: string[]): string[] => {
-  if (value == null) return [];
-  const text = Array.isArray(value) ? value.join(",") : String(value);
-  if (!text.trim()) return [];
-  const cleanedText = text.replace(STANDING_RE, " ");
-  const tokens = cleanedText.split(/[\s,;/]+/);
-  const results: string[] = [];
-  const seen = new Set<string>();
-
-  for (const token of tokens) {
-    const cleaned = token.replace(/^[^\w]+|[^\w]+$/g, "");
-    if (!cleaned) continue;
-    const lower = cleaned.toLowerCase();
-    if (STOP_WORDS.has(lower) || /^\d+(?:st|nd|rd|th)$/i.test(lower)) continue;
-
-    const matched = knownCodes.find(code => code.toLowerCase() === lower) ?? cleaned;
-    const key = matched.toLowerCase();
-    if (!seen.has(key)) {
-      seen.add(key);
-      results.push(matched);
+function parseRequirements(value: unknown, knownCodes: string[]) {
+  if (value == null || value === "") return { groups: [] as string[][], warnings: [] as string[] };
+  const warnings: string[] = [];
+  const groups: string[][] = [];
+  const known = (text: string) => knownCodes.find(code => code.toLowerCase() === text.toLowerCase()) ?? text;
+  const addGroup = (parts: string[]) => {
+    const alternatives = [...new Set(parts.map(part => known(part.trim())).filter(Boolean))];
+    if (alternatives.length) groups.push(alternatives);
+  };
+  const parseClause = (clause: string, allowUnknown = false) => {
+    const text = clause.replace(STANDING_RE, " ").trim();
+    if (!text || /^(?:none|n\/?a|nil|-|tba)$/i.test(text)) return;
+    const alternatives: string[] = [];
+    for (const token of text.split(/\s*(?:\bor\b|\/)\s*/i)) {
+      const cleaned = token.replace(/^[^\w]+|[^\w-]+$/g, "");
+      if (!cleaned || STOP_WORDS.has(cleaned.toLowerCase())) continue;
+      const matched = knownCodes.find(code => code.toLowerCase() === cleaned.toLowerCase());
+      if (matched) alternatives.push(matched);
+      else if (allowUnknown || /\d/.test(cleaned)) alternatives.push(cleaned);
+      else warnings.push(`Could not read requirement “${token.trim()}”.`);
     }
+    addGroup(alternatives);
+  };
+  if (Array.isArray(value) && value.every(Array.isArray)) {
+    for (const group of value as unknown[][]) addGroup(group.map(String));
+  } else if (Array.isArray(value)) {
+    for (const item of value) parseClause(String(item ?? ""), true);
+  } else {
+    const text = String(value).replace(STANDING_RE, " ");
+    for (const clause of text.split(/\s*(?:,|;|\band\b|&)\s*/i)) parseClause(clause);
   }
+  const unique = groups.map(group => [...new Set(group)]);
+  return { groups: unique, warnings: [...new Set(warnings)] };
+}
 
-  return results;
-};
+const allCodes = (groups: string[][]) => [...new Set(groups.flat())];
+export const formatRequirements = (groups: string[][], fallback: string[]) => (groups ?? fallback.map(code => [code])).map(group => group.join(" or ")).join(" and ");
 
 export function normalizeCurriculum(input: unknown): Curriculum {
   if (!input || typeof input !== "object") throw new Error("This file does not contain a curriculum object.");
@@ -84,19 +99,28 @@ export function normalizeCurriculum(input: unknown): Curriculum {
   if (new Set(codes).size !== rows.length) throw new Error("Course codes must be present and unique.");
   const courses = rows.map((row): Course => {
     const year = num(row.year), term = num(row.term);
-    if (!Number.isInteger(year) || year < 1 || year > 10 || !Number.isInteger(term) || term < 1 || term > 3) {
+    if (!Number.isInteger(year) || year < 1 || year > 100 || !Number.isInteger(term) || term < 1 || term > 3) {
       throw new Error(`Invalid year or term for ${row.code ?? "a course"}.`);
     }
     if (row.creditUnits != null && (!Number.isFinite(Number(row.creditUnits)) || Number(row.creditUnits) < 0)) {
       throw new Error(`Invalid credit units for ${row.code}.`);
     }
     const status = statuses.includes(row.status as Status) ? row.status as Status : "NotYetTaken";
+    const prerequisiteResult = parseRequirements(row.prerequisiteGroups ?? row.prerequisites, codes);
+    const corequisiteResult = parseRequirements(row.corequisiteGroups ?? row.corequisites, codes);
+    const originalYear = num(row.originalYear, year), originalTerm = num(row.originalTerm, term);
+    if (!Number.isInteger(originalYear) || originalYear < 1 || originalYear > 100 || !Number.isInteger(originalTerm) || originalTerm < 1 || originalTerm > 3) {
+      throw new Error(`Invalid original offering for ${row.code}.`);
+    }
     return {
       code: String(row.code).trim(), title: String(row.title ?? row.code).trim(), year, term,
-      originalYear: year, originalTerm: term, creditUnits: num(row.creditUnits),
+      originalYear, originalTerm, creditUnits: num(row.creditUnits),
       lecHrs: num(row.lecHrs), labHrs: num(row.labHrs), isNonAcademic: Boolean(row.isNonAcademic),
-      prerequisites: requisiteCodes(row.prerequisites, codes), corequisites: requisiteCodes(row.corequisites, codes),
+      prerequisites: allCodes(prerequisiteResult.groups), corequisites: allCodes(corequisiteResult.groups),
+      prerequisiteGroups: prerequisiteResult.groups, corequisiteGroups: corequisiteResult.groups,
+      requirementWarnings: [...prerequisiteResult.warnings, ...corequisiteResult.warnings].map(message => `${String(row.code)}: ${message}`),
       status, description: String(row.description ?? "").trim(),
+      isPinned: row.isPinned === true || undefined,
     };
   });
   const rawUnits = (source.units ?? {}) as Record<string, unknown>;
@@ -157,17 +181,25 @@ export function analyze(courses: Course[]) {
     let changed = false;
     for (const course of courses) {
       if (course.status === "Taken" || course.status === "Exempted") continue;
-      const reasons = course.prerequisites.filter((code) => {
-        const prerequisite = byCode.get(code);
-        if (!prerequisite) { missing.add(code); return true; }
-        return failed.has(prerequisite.status) || blocked.has(code) ||
-          (prerequisite.status !== "Taken" && prerequisite.status !== "Exempted" && termIndex(prerequisite) >= termIndex(course));
-      });
-      for (const code of course.corequisites) {
-        const corequisite = byCode.get(code);
-        if (!corequisite) { missing.add(code); reasons.push(code); }
-        else if (failed.has(corequisite.status) || blocked.has(code) ||
-          (corequisite.status !== "Taken" && corequisite.status !== "Exempted" && termIndex(corequisite) > termIndex(course))) reasons.push(code);
+      const reasons: string[] = [];
+      const prerequisiteGroups = course.prerequisiteGroups ?? course.prerequisites.map(code => [code]);
+      const corequisiteGroups = course.corequisiteGroups ?? course.corequisites.map(code => [code]);
+      for (const group of [...prerequisiteGroups, ...corequisiteGroups]) group.filter(code => !byCode.has(code)).forEach(code => missing.add(code));
+      for (const group of prerequisiteGroups) {
+        const satisfied = group.some(code => {
+          const item = byCode.get(code);
+          return item && (item.status === "Taken" || item.status === "Exempted" ||
+            (!failed.has(item.status) && !blocked.has(code) && termIndex(item) < termIndex(course)));
+        });
+        if (!satisfied) reasons.push(...group);
+      }
+      for (const group of corequisiteGroups) {
+        const satisfied = group.some(code => {
+          const item = byCode.get(code);
+          return item && (item.status === "Taken" || item.status === "Exempted" ||
+            (!failed.has(item.status) && !blocked.has(code) && termIndex(item) <= termIndex(course)));
+        });
+        if (!satisfied) reasons.push(...group);
       }
       if (reasons.length && JSON.stringify(blocked.get(course.code)) !== JSON.stringify(reasons)) {
         blocked.set(course.code, reasons); changed = true;
@@ -179,9 +211,12 @@ export function analyze(courses: Course[]) {
   for (const course of courses) loads.set(termIndex(course), (loads.get(termIndex(course)) ?? 0) + course.creditUnits);
   const availabilityRisks = courses.flatMap((course) => {
     if (!blocked.has(course.code)) return [];
-    const latestPrerequisite = Math.max(0, ...course.prerequisites.map((code) => {
+    const latestPrerequisite = Math.max(0, ...(course.prerequisiteGroups ?? course.prerequisites.map(code => [code])).map(group => {
+      const earliestOption = Math.min(...group.map(code => {
       const prerequisite = byCode.get(code);
-      return prerequisite && !failed.has(prerequisite.status) && prerequisite.status !== "Taken" && prerequisite.status !== "Exempted" ? termIndex(prerequisite) : 0;
+      return prerequisite && !failed.has(prerequisite.status) && prerequisite.status !== "Taken" && prerequisite.status !== "Exempted" ? termIndex(prerequisite) : Infinity;
+      }));
+      return Number.isFinite(earliestOption) ? earliestOption : 0;
     }));
     if (!latestPrerequisite) return [];
     const original = (course.originalYear - 1) * 3 + course.originalTerm;

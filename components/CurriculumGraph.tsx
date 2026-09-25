@@ -281,6 +281,7 @@ export default function CurriculumGraph({
       course.prerequisites
         .filter(code => visibleCodes.has(code))
         .forEach(code => {
+          const isAlternative = course.prerequisiteGroups?.some(group => group.length > 1 && group.includes(code)) ?? false;
           const isUpstreamEdge =
             (code === chosen || upstream.has(code)) && (course.code === chosen || upstream.has(course.code));
           const isDownstreamEdge =
@@ -310,6 +311,9 @@ export default function CurriculumGraph({
             source: code,
             target: course.code,
             type: "smoothstep",
+            label: isAlternative ? "OR" : undefined,
+            labelStyle: isAlternative ? { fill: "#334155", fontSize: 10, fontWeight: 700 } : undefined,
+            labelBgStyle: isAlternative ? { fill: "#fff", fillOpacity: 0.9 } : undefined,
             zIndex,
             markerEnd: {
               type: MarkerType.ArrowClosed,
@@ -320,7 +324,8 @@ export default function CurriculumGraph({
             style: {
               stroke: edgeColor,
               strokeWidth,
-              opacity
+              opacity,
+              ...(isAlternative ? { strokeDasharray: "5 4" } : {})
             }
           });
         });

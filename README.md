@@ -4,7 +4,7 @@ PathWise is a browser-based curriculum planner. Import a JSON export from the co
 
 ## Use the website
 
-PathWise runs in a web browser on Windows and macOS; it does not need a desktop installer. After the site is hosted, open its website address in a recent version of Chrome, Edge, Firefox, or Safari. Choose **Open your curriculum**, then select your exported `.json` or saved OneMCL `.html` file in the file picker. Your curriculum stays in that browser session and is not uploaded to the server. Refreshing or closing the page clears it, so keep the original file to open it again.
+PathWise runs in a web browser on Windows and macOS; it does not need a desktop installer. After the site is hosted, open its website address in a recent version of Chrome, Edge, Firefox, or Safari. Choose **Open your curriculum**, then select your exported `.json` or saved OneMCL `.html` file in the file picker. Your curriculum stays in that browser session and is not uploaded to the server. Use **Save plan** to download a `.pathwise.json` file that preserves your planned terms, course statuses, pins, and the original course offerings. Reopen that saved file with **Open your curriculum** to continue later.
 
 The file picker works the same way on both systems:
 

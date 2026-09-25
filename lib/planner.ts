@@ -45,9 +45,20 @@ export function planCurriculum(courses: Course[], options: PlanOptions) {
           const item = byCode.get(code);
           if (!item) return false;
           if (item.isPinned ? termIndex(item) !== index : item.originalTerm !== (index - 1) % 3 + 1) return false;
-          if (item.prerequisites.some(pre => !finished.has(pre) || finished.get(pre)! >= index)) return false;
+          const prerequisites = item.prerequisiteGroups ?? item.prerequisites.map(pre => [pre]);
+          if (prerequisites.some(group => !group.some(pre => finished.has(pre) && finished.get(pre)! < index))) return false;
           bundle.add(code);
-          return item.corequisites.every(include);
+          const corequisites = item.corequisiteGroups ?? item.corequisites.map(pre => [pre]);
+          for (const group of corequisites) {
+            let included = false;
+            const snapshot = new Set(bundle);
+            for (const alternative of group) {
+              bundle.clear(); snapshot.forEach(member => bundle.add(member));
+              if (include(alternative)) { included = true; break; }
+            }
+            if (!included) { bundle.clear(); snapshot.forEach(member => bundle.add(member)); return false; }
+          }
+          return true;
         }
         if (!include(course.code)) continue;
         const units = [...bundle].reduce((s, code) => s + byCode.get(code)!.creditUnits, 0);

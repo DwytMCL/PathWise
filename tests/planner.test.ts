@@ -21,6 +21,29 @@ test("a term 3 offering waits for the next year when its prerequisite finishes i
   assert.deepEqual(plan.criticalPath, ["A", "B"]);
 });
 
+test("OR prerequisites let the route use the available alternative", () => {
+  const input = courses([
+    { code: "A", year: 1, term: 1, creditUnits: 3 },
+    { code: "B", year: 1, term: 3, creditUnits: 3 },
+    { code: "TARGET", year: 1, term: 2, creditUnits: 3, prerequisites: "A or B" },
+  ]);
+  assert.deepEqual(input[2].prerequisiteGroups, [["A", "B"]]);
+  const plan = planCurriculum(input, options);
+  assert.equal(plan.assignments.get("A"), 1);
+  assert.equal(plan.assignments.get("TARGET"), 2);
+  assert.equal(plan.assignments.get("B"), 3);
+});
+
+test("AND prerequisites still require every listed course", () => {
+  const input = courses([
+    { code: "A", year: 1, term: 1, creditUnits: 3 },
+    { code: "B", year: 1, term: 3, creditUnits: 3 },
+    { code: "TARGET", year: 1, term: 2, creditUnits: 3, prerequisites: "A and B" },
+  ]);
+  const plan = planCurriculum(input, options);
+  assert.equal(plan.assignments.get("TARGET"), 5);
+});
+
 test("the planner respects load limits and prioritizes courses that unlock later work", () => {
   const input = courses([
     { code: "FREE", year: 1, term: 1, creditUnits: 3 },
@@ -47,6 +70,18 @@ test("mutual corequisites run together, but incompatible offerings are unresolve
   assert.equal(planCurriculum(input, { ...options, maxUnits: 3 }).finish, null);
   input[1].originalTerm = 3;
   assert.equal(planCurriculum(input, options).unresolved.length, 2);
+});
+
+test("an OR corequisite can be fulfilled by one course available that term", () => {
+  const input = courses([
+    { code: "LECT", year: 1, term: 2, corequisites: "LABA or LABB", creditUnits: 3 },
+    { code: "LABA", year: 1, term: 3, creditUnits: 1 },
+    { code: "LABB", year: 1, term: 1, creditUnits: 1 },
+  ]);
+  const plan = planCurriculum(input, options);
+  assert.equal(plan.assignments.get("LABB"), 1);
+  assert.equal(plan.assignments.get("LECT"), 2);
+  assert.equal(plan.assignments.get("LABA"), 3);
 });
 
 test("missing dependencies and prerequisite cycles never produce a graduation claim", () => {
@@ -134,4 +169,3 @@ test("a pinned course is scheduled at its specified term and finish extends acco
   assert.equal(plan.assignments.get("CPE199R-1P"), 13);
   assert.equal(plan.finish, 13);
 });
-

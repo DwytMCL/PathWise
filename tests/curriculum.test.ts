@@ -51,11 +51,23 @@ test("requisite parsing filters stop words and standing phrases", () => {
   });
 
   assert.deepEqual(courses.find(c => c.code === "CS201")?.prerequisites, ["CS101", "CS102"]);
+  assert.deepEqual(courses.find(c => c.code === "CS201")?.prerequisiteGroups, [["CS101", "CS102"]]);
+  assert.deepEqual(courses.find(c => c.code === "CS301")?.prerequisiteGroups, [["CS201"], ["CS101"]]);
   assert.deepEqual(courses.find(c => c.code === "CS301")?.prerequisites, ["CS201", "CS101"]);
   assert.deepEqual(courses.find(c => c.code === "CS401")?.prerequisites, []);
 
   const analysis = analyze(courses);
   assert.deepEqual(analysis.missing, []);
+});
+
+test("unknown plain-language requirement fragments are surfaced for review", () => {
+  const { courses } = normalizeCurriculum({ courses: [
+    { code: "CS101", year: 1, term: 1 },
+    { code: "NEXT", year: 1, term: 2, prerequisites: "CS101 and minimum GPA" },
+  ] });
+  assert.deepEqual(courses[1].prerequisiteGroups, [["CS101"]]);
+  assert.ok(courses[1].requirementWarnings.some(message => message.includes("minimum")));
+  assert.ok(courses[1].requirementWarnings.some(message => message.includes("GPA")));
 });
 
 test("requisite parsing handles edge values, mixed delimiters, and case canonicalization", () => {

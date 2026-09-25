@@ -1,0 +1,14 @@
+{
+  "program": "Example Program",
+  "curriculumYear": 2026,
+  "yearLevel": 2,
+  "specialization": "",
+  "units": { "required": 15, "credited": 3, "passed": 3, "left": 12 },
+  "courses": [
+    { "code": "MAT101", "title": "Foundations of Mathematics", "year": 1, "term": 1, "creditUnits": 3, "prerequisites": "", "corequisites": "", "status": "Taken" },
+    { "code": "MAT102", "title": "Applied Mathematics with a Deliberately Long Course Title to Check Wrapping", "year": 1, "term": 2, "creditUnits": 3, "prerequisites": "MAT101", "corequisites": "", "status": "NotYetTaken" },
+    { "code": "SCI201", "title": "Systems Analysis", "year": 2, "term": 1, "creditUnits": 3, "prerequisites": "MAT102", "corequisites": "", "status": "NotYetTaken" },
+    { "code": "SCI201L", "title": "Systems Analysis Laboratory", "year": 2, "term": 1, "creditUnits": 1, "prerequisites": "MAT102", "corequisites": "SCI201", "status": "NotYetTaken" },
+    { "code": "PRJ301", "title": "Final Project", "year": 3, "term": 2, "creditUnits": 3, "prerequisites": "SCI201", "corequisites": "", "status": "NotYetTaken" }
+  ]
+}

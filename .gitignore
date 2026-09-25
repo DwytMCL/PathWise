@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.next-dev/
+out/
+*.tsbuildinfo
+__pycache__/
+.vercel/
+curriculum.json
+curriculum_*.json
+.env*

@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "PathWise MMCL Curriculum Exporter",
+  "version": "1.0.0",
+  "description": "Exports MMCL OnEMCL Curriculum to structured JSON for the PathWise graph simulator.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Export Curriculum"
+  }
+}

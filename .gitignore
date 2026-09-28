@@ -8,3 +8,5 @@ __pycache__/
 curriculum.json
 curriculum_*.json
 .env*
+
+.vercel

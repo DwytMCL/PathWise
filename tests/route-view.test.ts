@@ -27,3 +27,28 @@ test("a manually moved course is visible in its destination timeline term", () =
     store.clear();
   }
 });
+
+test("the route view with unresolved requirements never presents a finish or apply action", () => {
+  const curriculum = normalizeCurriculum({ courses: [
+    { code: "FINAL301", title: "Final Project", year: 3, term: 2, creditUnits: 3, prerequisites: "MISSING201" },
+  ] });
+  const html = renderToStaticMarkup(createElement(EarliestPath, {
+    courses: curriculum.courses, yearLevel: 3,
+    onApply() {}, onSelect() {}, onTrace() {}, onBoard() {},
+  }));
+  assert.match(html, /1 course to review/);
+  assert.match(html, /Missing from file: MISSING201/);
+  assert.doesNotMatch(html, /PROJECTED FINISH|Earliest finish under these assumptions|Use this plan/);
+});
+
+test("a completed curriculum has no suggested terms or artificial future finish in the route view", () => {
+  const curriculum = normalizeCurriculum({ courses: [
+    { code: "DONE101", title: "Completed Foundations", year: 1, term: 1, creditUnits: 3, status: "Taken" },
+  ] });
+  const html = renderToStaticMarkup(createElement(EarliestPath, {
+    courses: curriculum.courses, yearLevel: 2,
+    onApply() {}, onSelect() {}, onTrace() {}, onBoard() {},
+  }));
+  assert.match(html, /Nothing left to schedule/);
+  assert.doesNotMatch(html, /PROJECTED FINISH|Choose a suggested term|Use this plan/);
+});

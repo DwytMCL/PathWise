@@ -12,7 +12,7 @@ export default function Landing({ onOpen, busy }: { onOpen: () => void; busy: bo
         <div className="privacy-inline"><LockKeyhole size={15} /><span>No account. Your curriculum stays in your browser.</span></div>
       </div>
       <div className="route-preview" aria-label="Illustrative three-course route using fictional courses">
-        <div className="preview-top"><span className="section-kicker">YOUR ROUTE, AT A GLANCE</span><span className="subtle-badge">Illustration</span></div>
+        <div className="preview-top"><span className="section-kicker">YOUR ROUTE, AT A GLANCE</span></div>
         <h2>One step opens the next.</h2>
         <ol className="preview-route">
           <li><span className="preview-stop">1</span><div><span className="preview-date">YEAR 2 · TERM 1</span><h3>Build the foundation</h3><p>FND100 · Foundations</p><small><Check size={13} /> No prerequisites</small></div></li>

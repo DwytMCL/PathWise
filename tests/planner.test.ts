@@ -131,6 +131,23 @@ test("using a plan preserves statuses and original availability, and undo restor
   useCurriculumStore.getState().clear();
 });
 
+test("manual placement can be released for replanning and restored with undo", () => {
+  const original = normalizeCurriculum({ courses: [{ code: "A", year: 1, term: 1, creditUnits: 3 }] });
+  const store = useCurriculumStore.getState();
+  store.load(original);
+  store.move("A", 3, 1);
+  const pinned = useCurriculumStore.getState().curriculum!;
+  assert.equal(planCurriculum(pinned.courses, options).assignments.get("A"), 7);
+  store.releasePlacement("A");
+  const released = useCurriculumStore.getState().curriculum!;
+  assert.equal(released.courses[0].year, 3);
+  assert.equal(released.courses[0].originalTerm, 1);
+  assert.equal(planCurriculum(released.courses, options).assignments.get("A"), 1);
+  store.undo();
+  assert.deepEqual(useCurriculumStore.getState().curriculum, pinned);
+  store.clear();
+});
+
 test("a larger curriculum keeps every assignment inside its offering, load, and dependency constraints", () => {
   const input = courses(Array.from({ length: 90 }, (_, i) => ({
     code: `TEST${i}`, year: Math.floor(i / 24) + 1, term: i % 3 + 1, creditUnits: i % 7 === 0 ? 1 : 3,

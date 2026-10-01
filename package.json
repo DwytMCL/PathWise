@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint app components lib tests scripts",
     "test": "tsx --test tests/*.test.ts",
     "check:preview": "node scripts/check-preview.mjs"
   },

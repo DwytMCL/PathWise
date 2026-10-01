@@ -4,6 +4,8 @@ node_modules/
 out/
 *.tsbuildinfo
 __pycache__/
+tmp/
+output/
 .vercel/
 curriculum.json
 curriculum_*.json

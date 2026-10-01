@@ -1,6 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { analyze, normalizeCurriculum } from "../lib/curriculum";
+import { analyze, courseConnections, normalizeCurriculum } from "../lib/curriculum";
+
+test("full dependency chains include prerequisites of corequisites and terminate mutual corequisite cycles", () => {
+  const { courses } = normalizeCurriculum({ courses: [
+    { code: "A", year: 1, term: 2, corequisites: ["B"] },
+    { code: "B", year: 1, term: 2, prerequisites: ["C"], corequisites: ["A"] },
+    { code: "C", year: 1, term: 1 },
+    { code: "D", year: 1, term: 3, prerequisites: ["A"] },
+  ] });
+  assert.deepEqual([...courseConnections(courses, "A").upstream], ["B"]);
+  assert.deepEqual([...courseConnections(courses, "A", true).upstream], ["B", "C"]);
+  assert.deepEqual(new Set(courseConnections(courses, "C", true).downstream), new Set(["A", "B", "D"]));
+});
 
 test("a failed prerequisite blocks its downstream chain and term loads follow moves", () => {
   const curriculum = normalizeCurriculum({ courses: [

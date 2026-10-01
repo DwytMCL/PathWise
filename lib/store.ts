@@ -7,6 +7,7 @@ type Store = {
   load: (curriculum: Curriculum) => void;
   setStatus: (code: string, status: Status) => void;
   move: (code: string, year: number, term: number) => void;
+  releasePlacement: (code: string) => void;
   applyPlan: (assignments: Map<string, number>) => void;
   undo: () => void;
   clear: () => void;
@@ -22,6 +23,10 @@ export const useCurriculumStore = create<Store>((set) => ({
   move: (code, year, term) => set((state) => state.curriculum ? {
     history: [...state.history, state.curriculum.courses],
     curriculum: { ...state.curriculum, courses: state.curriculum.courses.map((course) => course.code === code ? { ...course, year, term, isPinned: true } : course) },
+  } : state),
+  releasePlacement: (code) => set((state) => state.curriculum ? {
+    history: [...state.history, state.curriculum.courses],
+    curriculum: { ...state.curriculum, courses: state.curriculum.courses.map(course => course.code === code ? { ...course, isPinned: undefined } : course) },
   } : state),
   applyPlan: (assignments) => set((state) => state.curriculum ? {
     history: [...state.history, state.curriculum.courses],

@@ -171,6 +171,27 @@ export function parseCurriculumHtml(html: string): Curriculum {
 
 export const termIndex = (course: Pick<Course, "year" | "term">) => (course.year - 1) * 3 + course.term;
 
+export function courseConnections(courses: Course[], selected: string, transitive = false) {
+  const trace = (reverse: boolean) => {
+    const found = new Set<string>();
+    const queue = [selected];
+    while (queue.length) {
+      const code = queue.pop()!;
+      const course = courses.find(item => item.code === code);
+      const next = reverse
+        ? courses.filter(item => item.prerequisites.includes(code) || item.corequisites.includes(code)).map(item => item.code)
+        : [...(course?.prerequisites ?? []), ...(course?.corequisites ?? [])];
+      for (const item of next) {
+        if (item === selected || found.has(item)) continue;
+        found.add(item);
+        if (transitive) queue.push(item);
+      }
+    }
+    return found;
+  };
+  return { upstream: trace(false), downstream: trace(true) };
+}
+
 export function analyze(courses: Course[]) {
   const byCode = new Map(courses.map((course) => [course.code, course]));
   const blocked = new Map<string, string[]>();

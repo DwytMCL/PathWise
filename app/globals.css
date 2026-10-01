@@ -1,11 +1,12 @@
 :root {
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --ink: #172d3d; --muted: #536574; --rule: #d8e2e9; --paper: #fafcfe;
   --surface: #f0f5f8; --blue: #b9dcf0; --blue-dark: #285c7a; --blue-pale: #edf5fa;
   --accent: #b9dcf0; --warn: #80520e; --warn-pale: #fff5e2; --green: #22634f;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 100px; }
-body { margin: 0; color: var(--ink); background: var(--paper); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5; }
+body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--font-ui); font-size: 15px; line-height: 1.5; }
 button,input,select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .55; }
@@ -46,8 +47,8 @@ svg { flex-shrink: 0; }
 
 /* The landing page uses a readable route as its main visual. */
 .landing-hero { display: grid; grid-template-columns: 1.04fr 1fr; align-items: center; gap: clamp(32px,5vw,80px); padding-block: clamp(44px,4vw,64px); }
-.hero-copy h1 { font: 400 clamp(44px,4.7vw,68px)/1.08 Georgia,serif; letter-spacing: -.045em; margin: 23px 0; }
-.hero-copy h1 em { color: var(--blue-dark); font-weight: 400; }
+.hero-copy h1 { font: 800 clamp(44px,4.7vw,68px)/1.08 var(--font-ui); letter-spacing: -.045em; margin: 23px 0; }
+.hero-copy h1 em { color: var(--blue-dark); font-style: normal; font-weight: 800; }
 .hero-sub { max-width: 480px; font-size: 17px; line-height: 1.7; color: var(--muted); margin-bottom: 28px; }
 .hero-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .hero-file-note { font-size: 12px; margin: 14px 0 27px; color: var(--muted); }
@@ -70,7 +71,7 @@ svg { flex-shrink: 0; }
 .preview-caption { margin: 12px 0 0; font-size: 10px; line-height: 1.6; color: var(--muted); }
 .process-section { border-top: 1px solid var(--rule); padding-block: clamp(64px,8vw,100px); scroll-margin-top: 90px; }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; margin-bottom: 36px; }
-.section-heading h2 { font: 400 clamp(32px,3.4vw,46px)/1.1 Georgia,serif; letter-spacing: -.035em; margin: 16px 0 0; }
+.section-heading h2 { font: 600 clamp(32px,3.4vw,46px)/1.1 var(--font-ui); letter-spacing: -.035em; margin: 16px 0 0; }
 .section-heading > p { max-width: 390px; color: var(--muted); line-height: 1.7; margin: 0; }
 .process-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 40px; }
 .process-step { padding-top: 20px; border-top: 2px solid var(--blue); }

@@ -22,9 +22,9 @@
 .heroActions { display: flex; justify-content: center; align-items: center; gap: 23px; margin-top: 25px; }
 .heroActions > a { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12px; color: #5c6c81; }
 .privacyLine { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: #636d7b; margin-top: 14px; }
-.productStage { width: min(1030px,100%); height: 410px; position: relative; margin: 20px auto 0; perspective: 1700px; }
+.productStage { width: min(1030px,100%); min-height: 410px; padding: 8px 0 32px; position: relative; margin: 20px auto 0; perspective: 1700px; }
 .stageReflection { position: absolute; left: 12%; right: 12%; bottom: -15px; height: 48px; background: #7f96b534; border-radius: 50%; filter: blur(30px); }
-.productWindow { position: absolute; top: 8px; left: 12%; right: 10%; background: #fffffff7; border: 1px solid #fff; border-radius: 16px; overflow: hidden; transform: rotateX(7deg) rotateY(-7deg) rotateZ(1.5deg); box-shadow: 0 28px 55px -10px #35557838,0 3px 5px #314b7020,inset 0 0 0 1px #d3ddec; }
+.productWindow { position: relative; width: 78%; margin-left: 12%; background: #fffffff7; border: 1px solid #fff; border-radius: 16px; overflow: hidden; transform: rotateX(7deg) rotateY(-7deg) rotateZ(1.5deg); box-shadow: 0 28px 55px -10px #35557838,0 3px 5px #314b7020,inset 0 0 0 1px #d3ddec; }
 .windowChrome { height: 36px; background: #eef3f7bd; border-bottom: 1px solid #dce4ed; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 8px; color: #606c77; }
 .windowChrome > span:nth-child(2) { display: flex; align-items: center; gap: 5px; }
 .windowDots { display: flex; gap: 5px; }
@@ -145,8 +145,8 @@
   .heroActions > a { font-size: 10px; min-height: 30px; }
   .pill { min-height: 47px; font-size: 12px !important; }
   .privacyLine { font-size: 8px; margin-top: 10px; }
-  .productStage { height: 350px; margin-top: 28px; }
-  .productWindow { top: 34px; left: 0; right: 0; transform: rotateX(6deg) rotateY(-3deg) rotateZ(1deg); border-radius: 12px; }
+  .productStage { min-height: 350px; padding: 34px 0 28px; margin-top: 28px; }
+  .productWindow { width: 100%; margin-left: 0; transform: rotateX(6deg) rotateY(-3deg) rotateZ(1deg); border-radius: 12px; }
   .windowChrome { height: 28px; padding-inline: 10px; font-size: 7px; }
   .windowContent { grid-template-columns: 1fr; }
   .windowRail { display: none; }

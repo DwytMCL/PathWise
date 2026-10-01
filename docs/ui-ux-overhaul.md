@@ -39,3 +39,9 @@ Visual and interaction checks establish that the implementation works in these t
 ### Course-move visibility fix
 
 Manual placements now expand their timeline terms. Closing course details after a move reveals and focuses the destination course. The board follows moves and Undo across year filters while preserving All Years. Courses excluded from the suggestion, such as completed/current-load courses, are shown at their actual placement on the board. A rendered-route regression catches collapsed manual destinations; browser checks cover direct moves, off-term confirmation, cancellation, movement across years, Undo, and completed-course placement. All 25 tests pass. The test configuration enables the same automatic JSX runtime used by the app for component-rendering checks.
+
+### Graph clarity revision
+
+Following feedback that the earlier graph was easier to understand, Full chain is the default again. Blue nodes/arrows distinguish earlier requirements, orange nodes/arrows distinguish later courses, and the selected course has its own stronger outline. The graph occupies the full width, with course information below it, a minimap, a center-course action, and a starting zoom that keeps neighboring columns visible. Corequisites and OR alternatives keep separate labels and legend explanations; list descriptions distinguish required courses from alternative options. Phone screens still start with the course list. The minimap can be toggled and starts off in narrow layouts to avoid covering courses.
+
+Browser checks with fictional courses verify full-chain defaults, node selection, direct/all scopes, both arrow colors, OR/corequisite labels, list navigation, neighboring-card visibility in a narrow desktop panel, and phone layouts without page overflow. All 25 automated tests, TypeScript, ESLint, and the production build pass.

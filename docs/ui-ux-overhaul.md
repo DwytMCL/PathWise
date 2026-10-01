@@ -35,3 +35,7 @@ Visual and interaction checks establish that the implementation works in these t
 - Layout checked at 1440, 375, and 320 pixels. Phone views have no page overflow, use a stacked board, collapse planning settings after import, and default to the dependency list.
 - The Save action displayed its success message, but the embedded browser did not report a completed download. Actual download persistence remains unverified here; saved-file serialization/reopening passes automated tests and a saved fixture reopens correctly in the UI.
 - Local screenshots are under `output/ui-ux/` (ignored). Personal curriculum data was not used or bundled.
+
+### Course-move visibility fix
+
+Manual placements now expand their timeline terms. Closing course details after a move reveals and focuses the destination course. The board follows moves and Undo across year filters while preserving All Years. Courses excluded from the suggestion, such as completed/current-load courses, are shown at their actual placement on the board. A rendered-route regression catches collapsed manual destinations; browser checks cover direct moves, off-term confirmation, cancellation, movement across years, Undo, and completed-course placement. All 25 tests pass. The test configuration enables the same automatic JSX runtime used by the app for component-rendering checks.

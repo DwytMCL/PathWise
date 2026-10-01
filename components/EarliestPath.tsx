@@ -33,7 +33,7 @@ export default function EarliestPath({ courses, yearLevel, onApply, onSelect, on
 
   function courseRow(course: Course, next = false) {
     return <li key={course.code} className={chain.has(course.code) ? "on-finish-chain" : ""}>
-      <button className="path-course" onClick={() => onSelect(course.code)}>
+      <button id={next ? undefined : `route-course-${course.code}`} className="path-course" onClick={() => onSelect(course.code)}>
         <span className="path-course-code">{course.code}<small>{course.creditUnits} units</small></span>
         <span><strong>{course.title}</strong><small>Inferred Term {course.originalTerm} offering{course.prerequisites.length ? ` · Requires ${formatRequirements(course.prerequisiteGroups, course.prerequisites)}` : " · No prerequisites"}{course.corequisites.length ? ` · With or after ${formatRequirements(course.corequisiteGroups, course.corequisites)}` : ""}</small>
           {next && (plan.impact.get(course.code) ?? 0) > 0 && <em>Connects to {plan.impact.get(course.code)} later course{plan.impact.get(course.code) === 1 ? "" : "s"}</em>}
@@ -79,7 +79,7 @@ export default function EarliestPath({ courses, yearLevel, onApply, onSelect, on
             const items = courses.filter(c => plan.assignments.get(c.code) === index);
             const units = items.reduce((s,c) => s + c.creditUnits,0);
             const nextIndex = [...plan.assignments.values()].filter(i => i > index).sort((a,b) => a-b)[0];
-            return <li className={`path-term ${items.length ? "" : "waiting-term"}`} key={index}><span className="term-step">{position+1}</span>{items.length ? <details open={index === firstTerm}><summary className="path-term-heading"><div><h4>{termLabel(index)}</h4><p>{items.length} course{items.length === 1 ? "" : "s"} · {units} unit{units === 1 ? "" : "s"}{index === firstTerm ? " · Your next term" : ""}</p></div><meter min={0} max={options.maxUnits} value={units} aria-label={`${units} of ${options.maxUnits} units`} /></summary><ul className="path-courses">{items.map(c => courseRow(c))}</ul></details> : <div className="waiting-content"><h4>{termLabel(index)} <span>Waiting term</span></h4><p>{nextIndex ? `Next eligible courses: ${courses.filter(c => plan.assignments.get(c.code) === nextIndex).map(c => c.code).join(", ")} in ${termLabel(nextIndex)}.` : "No remaining courses can be scheduled here."}</p></div>}</li>;
+            return <li className={`path-term ${items.length ? "" : "waiting-term"}`} key={index}><span className="term-step">{position+1}</span>{items.length ? <details open={index === firstTerm || items.some(c => c.isPinned)}><summary className="path-term-heading"><div><h4>{termLabel(index)}</h4><p>{items.length} course{items.length === 1 ? "" : "s"} · {units} unit{units === 1 ? "" : "s"}{index === firstTerm ? " · Your next term" : ""}</p></div><meter min={0} max={options.maxUnits} value={units} aria-label={`${units} of ${options.maxUnits} units`} /></summary><ul className="path-courses">{items.map(c => courseRow(c))}</ul></details> : <div className="waiting-content"><h4>{termLabel(index)} <span>Waiting term</span></h4><p>{nextIndex ? `Next eligible courses: ${courses.filter(c => plan.assignments.get(c.code) === nextIndex).map(c => c.code).join(", ")} in ${termLabel(nextIndex)}.` : "No remaining courses can be scheduled here."}</p></div>}</li>;
           })}</ol></section>}
         </div>
       </div>

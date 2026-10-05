@@ -1,6 +1,6 @@
 # Student planning upgrades
 
-Approved on 5 October 2026. Work stays on `codex/student-planning-upgrades` until reviewed.
+Approved on 5 October 2026. Implemented and reviewed on 6 October 2026.
 
 ## Acceptance criteria
 
@@ -19,7 +19,7 @@ Use fictional fixtures for all tests. Protect existing unrelated working changes
 
 ## Implementation checkpoint — 6 October 2026
 
-The features above are implemented on the development branch. Main and the published site have not been updated by this task. No dependency was added and no personal curriculum was bundled.
+The features above are implemented and reviewed. No dependency was added and no personal curriculum was bundled.
 
 - **41 automated tests pass.** Coverage includes custom annual offerings, prerequisite/corequisite and load constraints, move consequences including completed/current courses, immutable scenario catalog validation, snapshot isolation, Undo, version 1 compatibility, version 2 roundtrips, requirement-warning retention, corrupt records, quota failures and scoped removal.
 - **Type checks, full lint and production build pass.** The final small focus-return correction also passes type checks and targeted lint.
@@ -33,6 +33,6 @@ The user will arrange students. [Testing kit](student-testing-kit.md) and [blank
 
 Actual 200%/400% browser zoom, operating-system reduced-motion behavior, screen-reader sessions and normal-browser download confirmation remain manual checks in the kit. The in-app browser did not change zoom through its keyboard controls and its download observer timed out; saved-file serialization and reopening were verified independently, but no completed download is claimed from that observer.
 
-## Resume this work
+## Follow-up testing
 
-Use `codex/student-planning-upgrades`; do not redo the completed feature work. Read this checkpoint and run the participant tasks. Review the local changes before any merge or publication. Preserve the unrelated `tsconfig.json` change and the user’s `motion/`, `outputs/` and `docs/research/` directories. Generated fictional evidence is under ignored `output/verification/student-planning/`.
+Run the participant tasks with fictional data, record the observations, and use the results to prioritize the next improvements. Generated fictional evidence is kept outside the published source.

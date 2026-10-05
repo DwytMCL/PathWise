@@ -7,10 +7,18 @@ import Image from "next/image";
 import Link from "next/link";
 import EarliestPath from "./EarliestPath";
 import Landing from "./Landing";
-import { analyze, formatRequirements, normalizeCurriculum, parseCurriculumHtml, statuses, termIndex, type Course } from "@/lib/curriculum";
-import { isPlanFile, parsePlanFile, serializePlanFile } from "@/lib/plan-file";
+import OfferingEditor from "./OfferingEditor";
+import CoursePriority from "./CoursePriority";
+import ScenarioManager from "./ScenarioManager";
+import SetupReview from "./SetupReview";
+import MoveReview from "./MoveReview";
+import useDevicePlan from "./useDevicePlan";
+import { analyze, formatRequirements, isOffered, normalizeCurriculum, offeringLabel, offeringSource, parseCurriculumHtml, statuses, termIndex, type Course } from "@/lib/curriculum";
+import { isPlanFile, parseWorkspaceFile, serializePlanFile } from "@/lib/plan-file";
 import { useCurriculumStore } from "@/lib/store";
-import { isComplete } from "@/lib/planner";
+import { isComplete, planCurriculum } from "@/lib/planner";
+import { previewMove } from "@/lib/planning-insights";
+import { defaultOptions, type PlanningWorkspace } from "@/lib/workspace";
 
 const CurriculumGraph = dynamic(() => import("./CurriculumGraph"), { ssr: false, loading: () => <div className="graph-loading">Preparing graph…</div> });
 type View = "path" | "board" | "graph";
@@ -21,7 +29,12 @@ function statusLabel(status: Course["status"]) {
 }
 
 export default function PathWiseApp() {
-  const { curriculum, history, load, setStatus, move, releasePlacement, applyPlan, undo, clear } = useCurriculumStore();
+  const { curriculum, options, scenarios, history, load, setStatus, setOfferings, setOptions, move, releasePlacement, applyPlan, saveScenario, restoreScenario, renameScenario, deleteScenario, undo, clear } = useCurriculumStore();
+  const workspace = useMemo<PlanningWorkspace | null>(() => curriculum && options ? { curriculum, options, scenarios } : null, [curriculum, options, scenarios]);
+  const device = useDevicePlan(workspace);
+  const [setupActive, setSetupActive] = useState(false);
+  const [routeSettingsDirty, setRouteSettingsDirty] = useState(false);
+  const previouslyOpenRef = useRef(false);
   const [view, setView] = useState<View>("path");
   const [graphCourse, setGraphCourse] = useState<string | null>(null);
   const [importVersion, setImportVersion] = useState(0);
@@ -42,34 +55,54 @@ export default function PathWiseApp() {
     code: string;
     year: number;
     term: number;
-    originalTerm: number;
-    title: string;
   } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const confirmDialogRef = useRef<HTMLDialogElement>(null);
   const exitDialogRef = useRef<HTMLDialogElement>(null);
-  const savedCoursesRef = useRef<Course[] | null>(null);
+  const planActionsRef = useRef<HTMLElement | null>(null);
+  const exitWasOpenRef = useRef(false);
+  const savedWorkspaceRef = useRef<PlanningWorkspace | null>(null);
+  const moveTriggerRef = useRef<HTMLElement | null>(null);
+  const plannedTermRef = useRef<HTMLSelectElement | null>(null);
+  const courseTriggerRef = useRef<HTMLElement | null>(null);
   const courses = curriculum?.courses ?? EMPTY_COURSES;
   const searchResults = courseQuery.trim() ? courses.filter(c => `${c.code} ${c.title}`.toLowerCase().includes(courseQuery.trim().toLowerCase())).slice(0, 8) : [];
   const analysis = useMemo(() => analyze(courses), [courses]);
   const selectedCourse = courses.find((course) => course.code === selected);
+  const routePlan = useMemo(() => options ? planCurriculum(courses, options) : null, [courses, options]);
+  const movePreview = useMemo(() => pendingMove && options ? previewMove(courses, pendingMove.code, (pendingMove.year - 1) * 3 + pendingMove.term, options) : null, [pendingMove, courses, options]);
+  const pendingCourse = courses.find(course => course.code === pendingMove?.code);
+  useEffect(() => {
+    if (!curriculum && previouslyOpenRef.current) document.getElementById("main-content")?.focus();
+    previouslyOpenRef.current = curriculum !== null;
+  }, [curriculum]);
   useEffect(() => {
     if (importVersion > 0) document.getElementById("main-content")?.focus({ preventScroll: true });
   }, [importVersion]);
   useEffect(() => {
     function protectChanges(event: BeforeUnloadEvent) {
-      if (history.length && courses !== savedCoursesRef.current) { event.preventDefault(); event.returnValue = ""; }
+      if (routeSettingsDirty || (history.length && workspace !== savedWorkspaceRef.current && workspace !== device.lastSaved)) { event.preventDefault(); event.returnValue = ""; }
     }
     window.addEventListener("beforeunload", protectChanges);
     return () => window.removeEventListener("beforeunload", protectChanges);
-  }, [courses, history.length]);
+  }, [workspace, device.lastSaved, history.length, routeSettingsDirty]);
   useEffect(() => {
-    if (pendingExit || replacement) exitDialogRef.current?.showModal();
-    else exitDialogRef.current?.close();
+    if (pendingExit || replacement) {
+      exitDialogRef.current?.showModal(); exitWasOpenRef.current = true;
+    } else {
+      exitDialogRef.current?.close();
+      if (exitWasOpenRef.current) planActionsRef.current?.focus();
+      exitWasOpenRef.current = false;
+    }
   }, [pendingExit, replacement]);
   useEffect(() => {
-    if (!selected) return;
+    if (!selected) {
+      if (courseTriggerRef.current?.isConnected) courseTriggerRef.current.focus();
+      courseTriggerRef.current = null;
+      return;
+    }
+    courseTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = dialogRef.current;
     dialog?.showModal();
     return () => dialog?.close();
@@ -80,6 +113,8 @@ export default function PathWiseApp() {
       confirmDialog?.showModal();
     } else {
       confirmDialog?.close();
+      if (moveTriggerRef.current?.isConnected) moveTriggerRef.current.focus();
+      moveTriggerRef.current = null;
     }
   }, [pendingMove]);
   useEffect(() => {
@@ -129,21 +164,31 @@ export default function PathWiseApp() {
     });
   }, [terms, yearFilter, hideCompleted, courses]);
 
+  function openWorkspace(next: PlanningWorkspace, review: boolean) {
+    const parsed = next.curriculum;
+    const missingCodes = analyze(parsed.courses).missing;
+    setImportWarnings([
+      ...parsed.courses.flatMap(course => course.requirementWarnings ?? []),
+      ...(missingCodes.length ? [`Requirements reference codes not included in this file: ${missingCodes.join(", ")}.`] : []),
+    ]);
+    load(parsed, next); setRouteSettingsDirty(false); setSetupActive(review); setImportVersion(v => v + 1); setGraphCourse(null); setSelected(null); setRecentMove(null); setPendingMove(null); setView("path"); setAddedYears(0); setYearFilter(Math.min(Math.max(1, parsed.yearLevel), Math.max(...parsed.courses.map(c => c.year)))); setHideCompleted(false); setCourseQuery(""); setAnnouncement(""); window.scrollTo(0, 0);
+  }
+
   async function importFile(file?: File, confirmed = false) {
     if (!file) return;
-    if (curriculum && history.length && !confirmed) { setReplacement(file); if (inputRef.current) inputRef.current.value = ""; return; }
+    if (curriculum && (history.length || routeSettingsDirty) && !confirmed) { setReplacement(file); if (inputRef.current) inputRef.current.value = ""; return; }
     setBusy(true); setError("");
     try {
       if (!/\.(json|html?|aspx)$/i.test(file.name)) throw new Error("Choose a .json or saved .html curriculum file.");
       const text = await file.text();
-      const parsedInput = /\.json$/i.test(file.name) ? JSON.parse(text) : null;
-      const parsed = parsedInput ? (isPlanFile(parsedInput) ? parsePlanFile(parsedInput) : normalizeCurriculum(parsedInput)) : parseCurriculumHtml(text);
-      const missingCodes = analyze(parsed.courses).missing;
-      setImportWarnings([
-        ...parsed.courses.flatMap(course => course.requirementWarnings ?? []),
-        ...(missingCodes.length ? [`Requirements reference codes not included in this file: ${missingCodes.join(", ")}.`] : []),
-      ]);
-      load(parsed); setImportVersion(v => v + 1); setGraphCourse(null); setSelected(null); setRecentMove(null); setView("path"); setAddedYears(0); setYearFilter(Math.min(Math.max(1, parsed.yearLevel), Math.max(...parsed.courses.map(c => c.year)))); setHideCompleted(false); setCourseQuery(""); setAnnouncement(""); window.scrollTo(0, 0);
+      const json = /\.json$/i.test(file.name);
+      const parsedInput = json ? JSON.parse(text) : null;
+      const saved = isPlanFile(parsedInput);
+      const next = saved ? parseWorkspaceFile(parsedInput) : (() => {
+        const curriculum = json ? normalizeCurriculum(parsedInput) : parseCurriculumHtml(text);
+        return { curriculum, options: defaultOptions(curriculum), scenarios: [] };
+      })();
+      device.pause(); openWorkspace(next, !saved);
     } catch (cause) { setError(cause instanceof SyntaxError ? "This JSON file could not be read. Check the export and try again." : cause instanceof Error ? cause.message : "This file could not be read."); }
     finally { setBusy(false); if (inputRef.current) inputRef.current.value = ""; }
   }
@@ -158,18 +203,8 @@ export default function PathWiseApp() {
     const course = courses.find((c) => c.code === code);
     if (!course) return;
     if (course.year === year && course.term === term) return;
-    if (term !== course.originalTerm) {
-      setPendingMove({
-        code: course.code,
-        year,
-        term,
-        originalTerm: course.originalTerm,
-        title: course.title,
-      });
-    } else {
-      placeCourse(code, year, term);
-      setAnnouncement(`${code} moved to Year ${year}, Term ${term}. Undo is available.`);
-    }
+    moveTriggerRef.current = selected ? plannedTermRef.current : document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setPendingMove({ code, year, term });
   }
 
   function placeCourse(code: string, year: number, term: number) {
@@ -179,13 +214,14 @@ export default function PathWiseApp() {
   }
 
   function switchView(next: View) {
+    if (setupActive) return;
     setView(next);
     document.getElementById("main-content")?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   }
 
   function undoChange() {
-    const previousPlacement = history.at(-1)?.find(previous => courses.some(current =>
+    const previousPlacement = history.at(-1)?.curriculum.courses.find(previous => courses.some(current =>
       current.code === previous.code && current.isPinned &&
       (current.year !== previous.year || current.term !== previous.term)
     ));
@@ -244,7 +280,7 @@ export default function PathWiseApp() {
           const flags: string[] = [];
           if (c.status !== "NotYetTaken") flags.push(statusLabel(c.status));
           if (c.isPinned) flags.push("PINNED");
-          if (c.term !== c.originalTerm) flags.push(`OFF-TERM (Offered T${c.originalTerm})`);
+          if (!isOffered(c, c.term)) flags.push(`OFF-TERM (${offeringLabel(c)})`);
           if (analysis.blocked.has(c.code)) flags.push("BLOCKED");
           const flagStr = flags.length ? ` [${flags.join(", ")}]` : "";
           lines.push(`  * ${c.code.padEnd(10)} ${c.title} (${c.creditUnits}u)${flagStr}`);
@@ -263,16 +299,16 @@ export default function PathWiseApp() {
   }
 
   function savePlanFile() {
-    if (!curriculum) return;
-    const saved = { ...curriculum, courses };
-    const blob = new Blob([serializePlanFile(saved)], { type: "application/json;charset=utf-8" });
+    if (routeSettingsDirty) { setAnnouncement("Update my route to apply your edited settings before downloading a plan."); return; }
+    if (!workspace) return;
+    const blob = new Blob([serializePlanFile(workspace.curriculum, workspace)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `pathwise-${curriculum.program.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-plan.pathwise.json`;
+    a.download = `pathwise-${workspace.curriculum.program.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-plan.pathwise.json`;
     a.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    savedCoursesRef.current = courses;
+    savedWorkspaceRef.current = workspace;
     setAnnouncement("Your plan file is ready. Reopen it in PathWise to continue later.");
   }
 
@@ -283,24 +319,26 @@ export default function PathWiseApp() {
         <Link className="brand" href="/" aria-label="PathWise home" onClick={e => { e.preventDefault(); setPendingExit(true); }}><Image src="/pathwise-logo.svg" alt="PathWise" width={152} height={39} priority /></Link>
         <div className="rail-program"><span><GraduationCap size={21} /></span><div><strong>{curriculum.program}</strong><small>{curriculum.curriculumYear ? `${curriculum.curriculumYear} curriculum` : "My curriculum"}</small></div></div>
         <nav className="workspace-view-nav" aria-label="Plan views">
-          <button aria-pressed={view === "path"} onClick={() => switchView("path")}><Route size={17} /> My route</button>
-          <button aria-pressed={view === "board"} onClick={() => switchView("board")}><LayoutGrid size={17} /> Term board</button>
-          <button aria-pressed={view === "graph"} onClick={() => switchView("graph")}><GitBranch size={17} /> Dependencies</button>
+          <button disabled={setupActive} aria-pressed={view === "path"} onClick={() => switchView("path")}><Route size={17} /> My route</button>
+          <button disabled={setupActive} aria-pressed={view === "board"} onClick={() => switchView("board")}><LayoutGrid size={17} /> Term board</button>
+          <button disabled={setupActive} aria-pressed={view === "graph"} onClick={() => switchView("graph")}><GitBranch size={17} /> Dependencies</button>
         </nav>
-        <div className="rail-privacy"><LockKeyhole size={17} /><p>Your file.<br />Your device.<br />Your bigger picture.</p><small>Save your plan to keep your changes.</small></div>
+        <div className="rail-privacy"><LockKeyhole size={17} /><p>Your file.<br />Your device.<br />Your bigger picture.</p><small>Download your plan or enable device autosave to keep your changes.</small></div>
       </aside>
-      <header className="topbar"><span className="workspace-breadcrumb">{view === "path" ? "My route" : view === "board" ? "Term board" : "Dependencies"}<ChevronRight size={13} /><span>{curriculum.program}</span></span><span className="session-label"><LockKeyhole size={14} /> Private browser session</span></header>
+      <header className="topbar"><span className="workspace-breadcrumb">{view === "path" ? "My route" : view === "board" ? "Term board" : "Dependencies"}<ChevronRight size={13} /><span>{curriculum.program}</span></span><span className="session-label"><LockKeyhole size={14} /> {device.enabled ? "Device autosave on" : "Private browser session"}</span></header>
     </>}
     {announcement && <div className="action-notice" role="status"><Check size={17} /><span>{announcement}</span>{history.length > 0 && <button onClick={undoChange}>Undo</button>}<button className="icon-button" aria-label="Dismiss notification" onClick={() => setAnnouncement("")}><X size={16} /></button></div>}
     {error && <div className="file-error" role="alert"><strong>Could not open the curriculum.</strong><span>{error}</span><button type="button" onClick={() => inputRef.current?.click()}>Choose another file</button><button type="button" className="icon-button" onClick={() => setError("")} aria-label="Dismiss error"><X size={16} /></button></div>}
+    {!curriculum && (device.draft || device.error) && <section className="device-resume" aria-labelledby="resume-title"><div><span className="section-index">CONTINUE WHERE YOU LEFT OFF</span><h2 id="resume-title">{device.draft ? device.draft.workspace.curriculum.program : "Saved plan on this device"}</h2><p>{device.draft?.savedAt ? `Last saved ${new Date(device.draft.savedAt).toLocaleString()}.` : "A plan may be saved in this browser."} Anyone using this browser can access a saved plan.</p>{device.error && <p className="inline-error" role="alert">{device.error}</p>}</div><div>{device.draft && <button className="primary-button" onClick={() => { if (device.draft) { openWorkspace(device.draft.workspace, false); device.enable(); } }}>Resume saved plan <ArrowRight size={16} /></button>}<button className="text-button" onClick={device.forget}>Forget saved plan on this device</button></div></section>}
     {!curriculum ? <main id="main-content" tabIndex={-1} className="landing" onDragOver={(event) => event.preventDefault()} onDrop={dropFile}>
       <Landing onOpen={() => inputRef.current?.click()} busy={busy} />
     </main> : <main id="main-content" tabIndex={-1} className="workspace">
+      <section className="device-controls" aria-label="Device autosave"><div><label><input type="checkbox" checked={device.enabled} onChange={e => e.target.checked ? device.enable() : device.forget()} />Remember this plan on this device</label><p>Saves courses, scenarios and applied route settings in this browser. Anyone using it can resume your plan. Leave this off on a shared device.</p></div><div><span role="status">{device.error ? "Not saved on this device" : device.enabled ? device.lastSaved === workspace ? routeSettingsDirty ? "Applied route saved · Edited settings are not saved yet" : device.message : "Saving on this device…" : device.message || "Autosave off"}</span>{device.draft && <button className="text-button" onClick={device.forget}>Forget saved plan</button>}</div>{device.error && <div className="device-error" role="alert"><p>{device.error}</p>{device.enabled && <button className="text-button" onClick={device.retry}>Try autosave again</button>}</div>}</section>
       {importWarnings.length > 0 && <details className="import-review"><summary><AlertTriangle size={17} /> {importWarnings.length} imported requirement{importWarnings.length === 1 ? "" : "s"} to review</summary><ul>{importWarnings.map((warning,i) => <li key={i}>{warning}</li>)}</ul><button className="text-button" onClick={() => setView("board")}>Review plan checks <ArrowRight size={15} /></button></details>}
-      <div className="workspace-heading"><div><span className="section-index">YOUR BIGGER PICTURE</span><h1>{view === "path" ? "A clearer way forward." : view === "board" ? "Your terms. Your plan." : "See the connections."}</h1><p>{courses.length} courses · {remaining} units remaining{curriculum.specialization && curriculum.specialization !== "Unassigned" ? ` · ${curriculum.specialization}` : ""}</p></div><div className="workspace-actions"><button className="secondary-button" onClick={savePlanFile}><Download size={16} /> Save plan</button><button className="text-button" onClick={undoChange} disabled={!history.length}><RotateCcw size={16} /> Undo</button><details className="plan-menu"><summary className="icon-button" aria-label="More plan actions"><ChevronDown size={18} /></summary><div><button onClick={e => { exportPlan(); e.currentTarget.closest("details")?.removeAttribute("open"); }}><Download size={16} /> Export as text</button><button onClick={e => { inputRef.current?.click(); e.currentTarget.closest("details")?.removeAttribute("open"); }} disabled={busy}><Upload size={16} /> {busy ? "Reading file…" : "Open another file"}</button><button onClick={e => { setPendingExit(true); e.currentTarget.closest("details")?.removeAttribute("open"); }}><X size={16} /> Close plan</button></div></details></div></div>
-      <div className="workspace-context"><div className="degree-progress"><span>{courses.filter(isComplete).length} of {courses.length} completed</span><progress value={courses.filter(isComplete).length} max={courses.length} aria-label="Completed courses" /></div><div className="course-search"><label htmlFor="course-search"><Search size={17} /><span className="sr-only">Find a course by code or title</span></label><input id="course-search" type="search" placeholder="Find a course…" value={courseQuery} onChange={e => setCourseQuery(e.target.value)} />{courseQuery.trim() && <div className="search-results"><span>{searchResults.length ? "Matching courses" : "No courses match. Try a code or title."}</span>{searchResults.map(c => <button key={c.code} onClick={() => { setSelected(c.code); setCourseQuery(""); }}><strong>{c.code}</strong><span>{c.title}</span><ArrowRight size={15} /></button>)}</div>}</div></div>
-      <div className={`workspace-grid ${view !== "board" ? "workspace-wide" : ""}`}><div className="main-column">
-      <div hidden={view !== "path"}><EarliestPath key={importVersion} courses={courses} yearLevel={curriculum.yearLevel} onApply={assignments => { applyPlan(assignments); setAnnouncement("Suggested dates applied to your plan. You can undo this change."); }} onSelect={setSelected} onTrace={code => { setGraphCourse(code); setView("graph"); document.querySelector(".workspace-heading")?.scrollIntoView({ block: "start" }); }} onBoard={() => setView("board")} /></div>
+      <div className="workspace-heading"><div><span className="section-index">YOUR BIGGER PICTURE</span><h1>{setupActive ? "Make it your plan." : view === "path" ? "A clearer way forward." : view === "board" ? "Your terms. Your plan." : "See the connections."}</h1><p>{courses.length} courses · {remaining} units remaining{curriculum.specialization && curriculum.specialization !== "Unassigned" ? ` · ${curriculum.specialization}` : ""}</p></div><div className="workspace-actions"><button className="secondary-button" disabled={routeSettingsDirty} onClick={savePlanFile}><Download size={16} /> Save plan</button><button className="text-button" onClick={undoChange} disabled={!history.length}><RotateCcw size={16} /> Undo</button><details className="plan-menu"><summary ref={planActionsRef} className="icon-button" aria-label="More plan actions"><ChevronDown size={18} /></summary><div><button disabled={routeSettingsDirty} onClick={e => { setSetupActive(true); setView("path"); e.currentTarget.closest("details")?.removeAttribute("open"); }}>Review my setup</button><button onClick={e => { exportPlan(); e.currentTarget.closest("details")?.removeAttribute("open"); }}><Download size={16} /> Export as text</button><button onClick={e => { inputRef.current?.click(); e.currentTarget.closest("details")?.removeAttribute("open"); }} disabled={busy}><Upload size={16} /> {busy ? "Reading file…" : "Open another file"}</button><button onClick={e => { setPendingExit(true); e.currentTarget.closest("details")?.removeAttribute("open"); }}><X size={16} /> Close plan</button></div></details></div></div>
+      {routeSettingsDirty && <p className="path-notice" role="status">Edited route settings are not saved yet. {setupActive ? "Finish your setup review" : "Open My route and select Update my route"} before saving.</p>}<div className="workspace-context"><div className="degree-progress"><span>{courses.filter(isComplete).length} of {courses.length} completed</span><progress value={courses.filter(isComplete).length} max={courses.length} aria-label="Completed courses" /></div><div className="course-search"><label htmlFor="course-search"><Search size={17} /><span className="sr-only">Find a course by code or title</span></label><input id="course-search" type="search" placeholder="Find a course…" value={courseQuery} onChange={e => setCourseQuery(e.target.value)} />{courseQuery.trim() && <div className="search-results"><span>{searchResults.length ? "Matching courses" : "No courses match. Try a code or title."}</span>{searchResults.map(c => <button key={c.code} onClick={() => { setSelected(c.code); setCourseQuery(""); }}><strong>{c.code}</strong><span>{c.title}</span><ArrowRight size={15} /></button>)}</div>}</div></div>
+      {setupActive && options ? <SetupReview onDraftChange={setRouteSettingsDirty} key={importVersion} curriculum={curriculum} options={options} onStatus={setStatus} onOfferings={setOfferings} onDone={next => { setOptions(next); setRouteSettingsDirty(false); setSetupActive(false); setView("path"); setImportVersion(v => v + 1); document.getElementById("main-content")?.focus({ preventScroll: true }); window.scrollTo(0, 0); setAnnouncement("Your route is ready. Open a course to see why it matters or review its offerings."); }} /> : <div className={`workspace-grid ${view !== "board" ? "workspace-wide" : ""}`}><div className="main-column">
+      <div hidden={view !== "path"}><EarliestPath onDraftChange={setRouteSettingsDirty} planningOptions={options ?? undefined} onOptionsChange={setOptions} key={importVersion} courses={courses} yearLevel={curriculum.yearLevel} onApply={assignments => { applyPlan(assignments); setAnnouncement("Suggested dates applied to your plan. You can undo this change."); }} onSelect={setSelected} onTrace={code => { setGraphCourse(code); setView("graph"); document.querySelector(".workspace-heading")?.scrollIntoView({ block: "start" }); }} onBoard={() => setView("board")} />{options && routePlan && <ScenarioManager settingsDirty={routeSettingsDirty} curriculum={curriculum} options={options} plan={routePlan} scenarios={scenarios} onSave={name => { saveScenario(name); setAnnouncement(`Scenario “${name.trim()}” saved. Download your plan or enable autosave to keep it.`); }} onRestore={id => { restoreScenario(id); setSelected(null); setRecentMove(null); setImportVersion(v => v + 1); setYearFilter("all"); setHideCompleted(false); setAnnouncement("Scenario restored, including its progress and offerings. Undo is available."); switchView("path"); }} onRename={(id, name) => { renameScenario(id, name); setAnnouncement("Scenario renamed. Undo is available."); }} onDelete={id => { deleteScenario(id); setAnnouncement("Scenario removed. Undo is available."); }} />}</div>
       {view === "board" ? <>
         <div className="board-toolbar">
           <div className="year-pills" role="group" aria-label="Filter terms by year">
@@ -383,7 +421,7 @@ export default function PathWiseApp() {
                   <div className="term-list">
                     {termCourses.length ? (
                       termCourses.map((course) => {
-                        const isOffTerm = course.term !== course.originalTerm;
+                        const isOffTerm = !isOffered(course, course.term);
                         const isBlocked = analysis.blocked.has(course.code);
 
                         return (
@@ -408,7 +446,7 @@ export default function PathWiseApp() {
                                 <span>{course.creditUnits}u</span>
                               </span>
                               <span className="course-title">{course.title}</span>
-                              <span className="course-offering">Inferred Term {course.originalTerm} offering</span>
+                              <span className="course-offering">{offeringSource(course)} · {offeringLabel(course)}</span>
                               <span className="card-badge-row">
                                 {course.isPinned && <span className="card-badge badge-pinned">PINNED</span>}
                                 {isOffTerm && <span className="card-badge badge-offterm">OFF-TERM</span>}
@@ -459,31 +497,24 @@ export default function PathWiseApp() {
           </div>
         )}
       </> : view === "graph" ? <CurriculumGraph courses={courses} blocked={analysis.blocked} onSelect={setSelected} onBoard={(code) => { setYearFilter(courses.find(c => c.code === code)?.year ?? "all"); setHideCompleted(false); setSelected(code); setView("board"); }} initialCourse={graphCourse} /> : null}</div>
-      {view === "board" && <aside className="insights" aria-live="polite"><h2>Plan signals</h2><p className="insights-intro">Changes update these checks immediately.</p>{analysis.blocked.size === 0 && overloaded.length === 0 && underloaded.length === 0 && !analysis.missing.length && !analysis.offeringConflicts.length && !courses.some(c => c.requirementWarnings?.length) ? <div className="signal-clear"><Check size={18} /><div><strong>No issues found</strong><p>Try moving a course or changing its status to test a scenario.</p></div></div> : <div className="signals">{analysis.offeringConflicts.length > 0 && <div className="signal"><span className="signal-tag">TERM OFFERING</span><strong>{analysis.offeringConflicts.length} outside their inferred offering term</strong><p>{analysis.offeringConflicts.map(c => `${c.code}: inferred term ${c.originalTerm}, planned term ${c.term}`).join("; ")}. Open My route to review suggested dates.</p></div>}{analysis.blocked.size > 0 && <div className="signal"><span className="signal-tag">PREREQUISITES</span><strong>{analysis.blocked.size} course{analysis.blocked.size === 1 ? "" : "s"} blocked</strong><p>{[...analysis.blocked].slice(0, 3).map(([code, reasons]) => `${code} needs ${reasons.join(", ")}`).join(" · ")}{analysis.blocked.size > 3 ? " · …" : ""}</p></div>}{analysis.availabilityRisks.slice(0, 3).map((risk) => <div className="signal" key={`season-${risk.code}`}><span className="signal-tag">OFFERING RISK</span><strong>{risk.code} could wait {risk.terms} term{risk.terms === 1 ? "" : "s"}</strong><p>If offered only in its original term, the next opening is Year {risk.nextYear}. Confirm the actual schedule.</p></div>)}{(overloaded.length > 0 || underloaded.length > 0) && <div className="signal"><span className="signal-tag">WORKLOAD</span><strong>Check unit load in {(overloaded.length + underloaded.length)} term{(overloaded.length + underloaded.length) === 1 ? "" : "s"}</strong><p>{overloaded.length > 0 && `Above 18 units: ${overloaded.map(([index, units]) => `Y${Math.floor((index - 1) / 3) + 1}T${((index - 1) % 3) + 1} (${units}u)`).join(", ")}. `}{underloaded.length > 0 && `Below 12 units: ${underloaded.map(([index, units]) => `Y${Math.floor((index - 1) / 3) + 1}T${((index - 1) % 3) + 1} (${units}u)`).join(", ")}. `}These thresholds are illustrative; check your institution’s rules.</p></div>}{analysis.missing.length > 0 && <div className="signal"><span className="signal-tag">DATA CHECK</span><strong>Unmatched requirement codes</strong><p>{analysis.missing.slice(0, 5).join(", ")}. These may refer to courses outside this file.</p></div>}{courses.some(c => c.requirementWarnings?.length) && <div className="signal"><span className="signal-tag">IMPORT CHECK</span><strong>Requirement text to review</strong><p>{courses.flatMap(c => c.requirementWarnings ?? []).slice(0, 5).join(" ")}</p></div>}</div>}<div className="insights-foot">Offerings repeat in the original term from your file. Open My route to rebuild a schedule around these inferred offerings.</div></aside>}</div></main>}
-    {(pendingExit || replacement) && <dialog ref={exitDialogRef} className="confirm-dialog" aria-labelledby="exit-title" onClose={() => { setPendingExit(false); setReplacement(null); }}><div className="dialog-head"><span className="section-index">KEEP YOUR PROGRESS</span><button className="icon-button" aria-label="Keep working" onClick={() => { setPendingExit(false); setReplacement(null); }}><X size={18} /></button></div><h2 id="exit-title">Before you {replacement ? "open another file" : "close your plan"}</h2><p>Your plan stays in this session. Download a copy if you want to keep your dates and course statuses.</p><button className="secondary-button" onClick={savePlanFile}><Download size={16} /> Save a copy</button><div className="confirm-actions"><button className="text-button" onClick={() => { setPendingExit(false); setReplacement(null); }}>Keep working</button><button className="primary-button" onClick={() => { if (replacement) { const file = replacement; setReplacement(null); void importFile(file, true); } else { clear(); window.scrollTo(0, 0); setRecentMove(null); setPendingExit(false); setImportWarnings([]); setAnnouncement(""); setCourseQuery(""); } }}>{replacement ? "Open selected file" : "Close plan"}</button></div></dialog>}
+      {view === "board" && <aside className="insights" aria-live="polite"><h2>Plan signals</h2><p className="insights-intro">Changes update these checks immediately.</p>{analysis.blocked.size === 0 && overloaded.length === 0 && underloaded.length === 0 && !analysis.missing.length && !analysis.offeringConflicts.length && !courses.some(c => c.requirementWarnings?.length) ? <div className="signal-clear"><Check size={18} /><div><strong>No issues found</strong><p>Try moving a course or changing its status to test a scenario.</p></div></div> : <div className="signals">{analysis.offeringConflicts.length > 0 && <div className="signal"><span className="signal-tag">TERM OFFERING</span><strong>{analysis.offeringConflicts.length} outside their offering terms</strong><p>{analysis.offeringConflicts.map(c => `${c.code}: ${offeringLabel(c)}, planned term ${c.term}`).join("; ")}. Open My route to review suggested dates.</p></div>}{analysis.blocked.size > 0 && <div className="signal"><span className="signal-tag">PREREQUISITES</span><strong>{analysis.blocked.size} course{analysis.blocked.size === 1 ? "" : "s"} blocked</strong><p>{[...analysis.blocked].slice(0, 3).map(([code, reasons]) => `${code} needs ${reasons.join(", ")}`).join(" · ")}{analysis.blocked.size > 3 ? " · …" : ""}</p></div>}{analysis.availabilityRisks.slice(0, 3).map((risk) => <div className="signal" key={`season-${risk.code}`}><span className="signal-tag">OFFERING RISK</span><strong>{risk.code} could wait {risk.terms} term{risk.terms === 1 ? "" : "s"}</strong><p>Under its configured offerings, the next modeled opening is in Year {risk.nextYear}. Confirm the actual schedule.</p></div>)}{(overloaded.length > 0 || underloaded.length > 0) && <div className="signal"><span className="signal-tag">WORKLOAD</span><strong>Check unit load in {(overloaded.length + underloaded.length)} term{(overloaded.length + underloaded.length) === 1 ? "" : "s"}</strong><p>{overloaded.length > 0 && `Above 18 units: ${overloaded.map(([index, units]) => `Y${Math.floor((index - 1) / 3) + 1}T${((index - 1) % 3) + 1} (${units}u)`).join(", ")}. `}{underloaded.length > 0 && `Below 12 units: ${underloaded.map(([index, units]) => `Y${Math.floor((index - 1) / 3) + 1}T${((index - 1) % 3) + 1} (${units}u)`).join(", ")}. `}These thresholds are illustrative; check your institution’s rules.</p></div>}{analysis.missing.length > 0 && <div className="signal"><span className="signal-tag">DATA CHECK</span><strong>Unmatched requirement codes</strong><p>{analysis.missing.slice(0, 5).join(", ")}. These may refer to courses outside this file.</p></div>}{courses.some(c => c.requirementWarnings?.length) && <div className="signal"><span className="signal-tag">IMPORT CHECK</span><strong>Requirement text to review</strong><p>{courses.flatMap(c => c.requirementWarnings ?? []).slice(0, 5).join(" ")}</p></div>}</div>}<div className="insights-foot">Offerings follow your imported or custom terms. Open My route to rebuild a schedule around them.</div></aside>}</div>}</main>}
+    {(pendingExit || replacement) && <dialog ref={exitDialogRef} className="confirm-dialog" aria-labelledby="exit-title" onClose={() => { setPendingExit(false); setReplacement(null); }}><div className="dialog-head"><span className="section-index">KEEP YOUR PROGRESS</span><button className="icon-button" aria-label="Keep working" onClick={() => { setPendingExit(false); setReplacement(null); }}><X size={18} /></button></div><h2 id="exit-title">Before you {replacement ? "open another file" : "close your plan"}</h2><p>Download a copy to keep your courses, settings and scenarios. If device autosave is enabled, its saved copy also remains available on this device.</p>{routeSettingsDirty && <p className="inline-error" role="alert">Your edited route settings have not been applied or saved. Keep working and {setupActive ? "finish your setup review" : "select Update my route"} to keep them.</p>}{device.enabled && device.error && <p className="inline-error" role="alert">{device.error}</p>}<button className="secondary-button" disabled={routeSettingsDirty} onClick={savePlanFile}><Download size={16} /> Save a copy</button><div className="confirm-actions"><button className="text-button" onClick={() => { setPendingExit(false); setReplacement(null); }}>Keep working</button><button className="primary-button" onClick={() => { if (device.enabled && !device.error && !device.flush()) return; if (replacement) { const file = replacement; setReplacement(null); void importFile(file, true); } else { device.pause(); clear(); setRouteSettingsDirty(false); setSetupActive(false); window.scrollTo(0, 0); setRecentMove(null); setPendingExit(false); setImportWarnings([]); setAnnouncement(""); setCourseQuery(""); } }}>{device.enabled && device.error ? replacement ? "Open file without autosaving" : "Close without autosaving" : routeSettingsDirty ? replacement ? "Open file without applying settings" : "Close without applying settings" : replacement ? "Open selected file" : "Close plan"}</button></div></dialog>}
     <input ref={inputRef} type="file" accept=".json,.html,.htm,.aspx,application/json,text/html" hidden onChange={(event: ChangeEvent<HTMLInputElement>) => void importFile(event.target.files?.[0])} />
-    {selectedCourse && <dialog ref={dialogRef} className="course-dialog" aria-labelledby="course-heading" onClose={() => setSelected(null)}><div className="dialog-head"><span className="section-index">COURSE DETAILS</span><button type="button" className="icon-button" onClick={() => setSelected(null)} aria-label="Close details"><X size={19} /></button></div><h2 id="course-heading">{selectedCourse.title}</h2><p className="dialog-code">{selectedCourse.code} · {selectedCourse.creditUnits} units</p>{selectedCourse.description && <p className="course-description">{selectedCourse.description}</p>}<div className="detail-list"><div><span>Inferred availability</span><strong>Term {selectedCourse.originalTerm} each year</strong><p>Based on original placement in your file. Confirm with your school.</p>{selectedCourse.term !== selectedCourse.originalTerm && <p className="offering-warning">Your planned term is outside the inferred offering. Choose Term {selectedCourse.originalTerm}, or allow the planner to reschedule any manual placement and review My route.</p>}</div><div><span>Prerequisites</span><strong>{formatRequirements(selectedCourse.prerequisiteGroups, selectedCourse.prerequisites) || "None listed"}</strong></div><div><span>Corequisites</span><strong>{formatRequirements(selectedCourse.corequisiteGroups, selectedCourse.corequisites) || "None listed"}</strong></div>{analysis.blocked.has(selectedCourse.code) && <div className="detail-alert"><span>Needs attention</span><strong>Blocked by {analysis.blocked.get(selectedCourse.code)?.join(", ")}</strong></div>}{selectedCourse.isPinned && <div className="detail-alert manual-placement"><span>Manual placement</span><strong>Kept in Year {selectedCourse.year} · Term {selectedCourse.term}</strong><button className="text-button" onClick={() => { releasePlacement(selectedCourse.code); setAnnouncement(`${selectedCourse.code} can now be rescheduled in suggested routes. Undo is available.`); }}>Allow planner to reschedule</button></div>}</div><div className="dialog-fields"><label>Status <span className="select-wrap"><select value={selectedCourse.status} onChange={(event) => { setStatus(selectedCourse.code, event.target.value as Course["status"]); setAnnouncement(`${selectedCourse.code} status updated. Undo is available.`); }}>{statuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select><ChevronDown size={16} /></span></label><label>Planned term <span className="select-wrap"><select value={termIndex(selectedCourse)} onChange={(event) => { const index = Number(event.target.value); requestMove(selectedCourse.code, Math.floor((index - 1) / 3) + 1, ((index - 1) % 3) + 1); }}>{selectableTerms.map(({ year, term, index }) => <option key={index} value={index}>Year {year} · Term {term}{index > terms.length ? " (Extend to Year " + year + ")" : ""}</option>)}</select><ChevronDown size={16} /></span></label></div><div className="dialog-actions"><button type="button" className="secondary-button" onClick={() => { setSelected(null); setYearFilter(selectedCourse.year); setHideCompleted(false); setView("board"); }}>View on term board <ArrowRight size={13} /></button><button className="text-button" onClick={() => { setSelected(null); setGraphCourse(selectedCourse.code); setView("graph"); }}>Trace requirements <GitBranch size={15} /></button></div><p className="dialog-note">Originally listed in Year {selectedCourse.originalYear}, Term {selectedCourse.originalTerm}. Save your plan to keep these changes after closing.</p></dialog>}
-    {pendingMove && <dialog ref={confirmDialogRef} className="confirm-dialog" aria-labelledby="confirm-move-title" onClose={() => setPendingMove(null)}>
-      <div className="confirm-head">
-        <div className="confirm-icon-wrap"><AlertTriangle size={20} aria-hidden="true" /></div>
-        <div>
-          <span className="section-index">COURSE AVAILABILITY NOTICE</span>
-          <h3 id="confirm-move-title">This term may not be available</h3>
-        </div>
-        <button type="button" className="icon-button" onClick={() => setPendingMove(null)} aria-label="Cancel move"><X size={18} /></button>
+    {selectedCourse && <dialog ref={dialogRef} className="course-dialog" aria-labelledby="course-heading" onClose={() => setSelected(null)}>
+      <div className="dialog-head"><span className="section-index">COURSE DETAILS</span><button type="button" className="icon-button" onClick={() => setSelected(null)} aria-label="Close details"><X size={19} /></button></div>
+      <h2 id="course-heading">{selectedCourse.title}</h2><p className="dialog-code">{selectedCourse.code} · {selectedCourse.creditUnits} units</p>
+      {selectedCourse.description && <p className="course-description">{selectedCourse.description}</p>}
+      <div className="detail-list"><div><span>{offeringSource(selectedCourse)}</span><strong>{offeringLabel(selectedCourse)}</strong><p>{selectedCourse.offeredTerms ? "You set these planning terms." : "Based on original placement in your file."} Confirm with your school.</p>{!isOffered(selectedCourse, selectedCourse.term) && <p className="offering-warning">Your planned term is outside these offerings. Choose an available term or allow the planner to reschedule this placement.</p>}</div><div><span>Prerequisites</span><strong>{formatRequirements(selectedCourse.prerequisiteGroups, selectedCourse.prerequisites) || "None listed"}</strong></div><div><span>Corequisites</span><strong>{formatRequirements(selectedCourse.corequisiteGroups, selectedCourse.corequisites) || "None listed"}</strong></div>
+        {analysis.blocked.has(selectedCourse.code) && <div className="detail-alert"><span>Needs attention</span><strong>Blocked by {analysis.blocked.get(selectedCourse.code)?.join(", ")}</strong></div>}
+        {selectedCourse.isPinned && <div className="detail-alert manual-placement"><span>Manual placement</span><strong>Kept in Year {selectedCourse.year} · Term {selectedCourse.term}</strong><button className="text-button" onClick={() => { releasePlacement(selectedCourse.code); setAnnouncement(`${selectedCourse.code} can now be rescheduled in suggested routes. Undo is available.`); }}>Allow planner to reschedule</button></div>}
       </div>
-      <div className="confirm-body">
-        <p><strong>{pendingMove.code} ({pendingMove.title})</strong> is inferred to be offered in <strong>Term {pendingMove.originalTerm}</strong> each academic year and might not be available during <strong>Year {pendingMove.year} · Term {pendingMove.term}</strong>.</p>
-        <div className="confirm-availability-box">
-          <strong>Offering schedule</strong>
-          <p>Your file places it in <strong>Term {pendingMove.originalTerm}</strong> (or whenever the department makes it available).</p>
-        </div>
-        <p className="confirm-subnote">You can still move it to Year {pendingMove.year} · Term {pendingMove.term} to simulate special terms, petitions, or off-cycle enrollment.</p>
-      </div>
-      <div className="confirm-actions">
-        <button type="button" className="secondary-button" onClick={() => setPendingMove(null)}>Cancel</button>
-        <button type="button" className="primary-button" onClick={() => { placeCourse(pendingMove.code, pendingMove.year, pendingMove.term); setAnnouncement(`${pendingMove.code} moved outside its inferred offering. Check your school schedule. Undo is available.`); setPendingMove(null); }}>Move to Year {pendingMove.year} · Term {pendingMove.term} anyway <ArrowRight size={15} /></button>
-      </div>
+      <OfferingEditor course={selectedCourse} onChange={terms => { setOfferings(selectedCourse.code, terms); setAnnouncement(`${selectedCourse.code} offerings updated. The suggested route has recalculated. Undo is available.`); }} />
+      {options && <CoursePriority courses={courses} code={selectedCourse.code} options={options} />}
+      <div className="dialog-fields"><label>Status <span className="select-wrap"><select value={selectedCourse.status} onChange={event => { setStatus(selectedCourse.code, event.target.value as Course["status"]); setAnnouncement(`${selectedCourse.code} status updated. Undo is available.`); }}>{statuses.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select><ChevronDown size={16} /></span></label><label>Planned term <span className="select-wrap"><select ref={plannedTermRef} value={termIndex(selectedCourse)} onChange={event => { const index = Number(event.target.value); requestMove(selectedCourse.code, Math.floor((index - 1) / 3) + 1, ((index - 1) % 3) + 1); }}>{selectableTerms.map(({ year, term, index }) => <option key={index} value={index}>Year {year} · Term {term}{index > terms.length ? " (Extend to Year " + year + ")" : ""}</option>)}</select><ChevronDown size={16} /></span></label></div>
+      <div className="dialog-actions"><button type="button" className="secondary-button" onClick={() => { setSelected(null); setYearFilter(selectedCourse.year); setHideCompleted(false); setView("board"); }}>View on term board <ArrowRight size={13} /></button><button className="text-button" onClick={() => { setSelected(null); setGraphCourse(selectedCourse.code); setView("graph"); }}>Trace requirements <GitBranch size={15} /></button></div>
+      <p className="dialog-note">Originally listed in Year {selectedCourse.originalYear}, Term {selectedCourse.originalTerm}. Download your plan or enable autosave to keep your changes.</p>
     </dialog>}
+    {pendingMove && pendingCourse && movePreview && <MoveReview dialogRef={confirmDialogRef} course={pendingCourse} destination={(pendingMove.year - 1) * 3 + pendingMove.term} preview={movePreview} onCancel={() => setPendingMove(null)} onConfirm={() => { placeCourse(pendingMove.code, pendingMove.year, pendingMove.term); setAnnouncement(`${pendingMove.code} moved to Year ${pendingMove.year}, Term ${pendingMove.term}.${movePreview.offeringConflict ? " Outside its configured offerings; confirm with your school." : ""} Undo is available.`); setPendingMove(null); }} />}
+
   </div>;
 }

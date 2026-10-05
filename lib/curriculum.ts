@@ -20,6 +20,7 @@ export type Course = {
   status: Status;
   description: string;
   isPinned?: boolean;
+  offeredTerms?: number[];
 };
 
 export type Curriculum = {
@@ -90,6 +91,22 @@ function parseRequirements(value: unknown, knownCodes: string[]) {
 const allCodes = (groups: string[][]) => [...new Set(groups.flat())];
 export const formatRequirements = (groups: string[][], fallback: string[]) => (groups ?? fallback.map(code => [code])).map(group => group.join(" or ")).join(" and ");
 
+export function normalizeOfferingTerms(value: unknown): number[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || !value.length || value.some(term => !Number.isInteger(term) || term < 1 || term > 3)) {
+    throw new Error("Choose at least one offering term from Terms 1–3.");
+  }
+  return [...new Set(value as number[])].sort();
+}
+
+export const offeringTerms = (course: Course) => course.offeredTerms ?? [course.originalTerm];
+export const isOffered = (course: Course, term: number) => offeringTerms(course).includes(term);
+export const offeringLabel = (course: Course) => {
+  const terms = offeringTerms(course);
+  return terms.length === 3 ? "Every term" : `${terms.length === 1 ? "Term" : "Terms"} ${terms.join(" & ")} each year`;
+};
+export const offeringSource = (course: Course) => course.offeredTerms ? "Custom offering" : "Inferred offering";
+
 export function normalizeCurriculum(input: unknown): Curriculum {
   if (!input || typeof input !== "object") throw new Error("This file does not contain a curriculum object.");
   const source = input as Record<string, unknown>;
@@ -118,9 +135,13 @@ export function normalizeCurriculum(input: unknown): Curriculum {
       lecHrs: num(row.lecHrs), labHrs: num(row.labHrs), isNonAcademic: Boolean(row.isNonAcademic),
       prerequisites: allCodes(prerequisiteResult.groups), corequisites: allCodes(corequisiteResult.groups),
       prerequisiteGroups: prerequisiteResult.groups, corequisiteGroups: corequisiteResult.groups,
-      requirementWarnings: [...prerequisiteResult.warnings, ...corequisiteResult.warnings].map(message => `${String(row.code)}: ${message}`),
+      requirementWarnings: [...new Set([
+        ...[...prerequisiteResult.warnings, ...corequisiteResult.warnings].map(message => `${String(row.code)}: ${message}`),
+        ...(Array.isArray(row.requirementWarnings) ? row.requirementWarnings.filter((value): value is string => typeof value === "string") : []),
+      ])],
       status, description: String(row.description ?? "").trim(),
       isPinned: row.isPinned === true || undefined,
+      offeredTerms: normalizeOfferingTerms(row.offeredTerms),
     };
   });
   const rawUnits = (source.units ?? {}) as Record<string, unknown>;
@@ -241,10 +262,12 @@ export function analyze(courses: Course[]) {
     }));
     if (!latestPrerequisite) return [];
     const original = (course.originalYear - 1) * 3 + course.originalTerm;
-    let next = original;
-    while (next <= latestPrerequisite) next += 3;
-    return next > original ? [{ code: course.code, terms: next - original, nextYear: Math.floor((next - 1) / 3) + 1 }] : [];
+    let baseline = original;
+    while (!isOffered(course, (baseline - 1) % 3 + 1)) baseline++;
+    let next = baseline;
+    while (next <= latestPrerequisite || !isOffered(course, (next - 1) % 3 + 1)) next++;
+    return next > baseline ? [{ code: course.code, terms: next - baseline, nextYear: Math.floor((next - 1) / 3) + 1 }] : [];
   });
-  const offeringConflicts = courses.filter(c => c.status !== "Taken" && c.status !== "Exempted" && c.term !== c.originalTerm);
+  const offeringConflicts = courses.filter(c => c.status !== "Taken" && c.status !== "Exempted" && !isOffered(c, c.term));
   return { blocked, missing: [...missing], loads, availabilityRisks, offeringConflicts };
 }

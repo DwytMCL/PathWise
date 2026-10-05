@@ -1,0 +1,8 @@
+participant_code,device,browser,input_method,planner_experience,task_id,outcome,seconds,incorrect_actions,help_given,confidence_1_to_5,observed_behavior,participant_quote,interpretation,issue_severity,proposed_fix
+P01,,,,,1,,,,,,,,,,
+P01,,,,,2,,,,,,,,,,
+P01,,,,,3,,,,,,,,,,
+P01,,,,,4,,,,,,,,,,
+P01,,,,,5,,,,,,,,,,
+P01,,,,,6,,,,,,,,,,
+P01,,,,,7,,,,,,,,,,

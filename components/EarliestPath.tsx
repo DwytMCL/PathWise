@@ -1,26 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, Check, ChevronDown, Flag, GitBranch, GitCompareArrows, GraduationCap, Info, Layers, Route, SlidersHorizontal, X } from "lucide-react";
-import { formatRequirements, termIndex, type Course } from "@/lib/curriculum";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, CalendarDays, Check, ChevronDown, Flag, GitBranch, GraduationCap, Info, Layers, Route, SlidersHorizontal } from "lucide-react";
+import { formatRequirements, offeringLabel, offeringSource, termIndex, type Course } from "@/lib/curriculum";
 import { defaultStart, planCurriculum, termLabel, type PlanOptions } from "@/lib/planner";
 
-type Comparison = { finish: number | null; options: PlanOptions; unresolved: number };
-
-export default function EarliestPath({ courses, yearLevel, onApply, onSelect, onTrace, onBoard }: {
+export default function EarliestPath({ courses, yearLevel, onApply, onSelect, onTrace, onBoard, planningOptions, onOptionsChange, onDraftChange }: {
   courses: Course[]; yearLevel: number; onApply: (assignments: Map<string, number>) => void;
   onSelect: (code: string) => void; onTrace: (code: string) => void; onBoard: () => void;
+  planningOptions?: PlanOptions; onOptionsChange?: (options: PlanOptions) => void;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
-  const [start, setStart] = useState(() => defaultStart(courses, yearLevel));
-  const [maxUnits, setMaxUnits] = useState(18);
-  const [assumeCurrentPass, setAssumeCurrentPass] = useState(true);
-  const [options, setOptions] = useState<PlanOptions>(() => ({ startTerm: defaultStart(courses, yearLevel), maxUnits: 18, assumeCurrentPass: true }));
-  const [comparison, setComparison] = useState<Comparison | null>(null);
+  const [start, setStart] = useState(() => planningOptions?.startTerm ?? defaultStart(courses, yearLevel));
+  const [maxUnits, setMaxUnits] = useState(planningOptions?.maxUnits ?? 18);
+  const [assumeCurrentPass, setAssumeCurrentPass] = useState(planningOptions?.assumeCurrentPass ?? true);
+  const [localOptions, setLocalOptions] = useState<PlanOptions>(() => ({ startTerm: defaultStart(courses, yearLevel), maxUnits: 18, assumeCurrentPass: true }));
+  const options = planningOptions ?? localOptions;
+  function setOptions(next: PlanOptions) { setLocalOptions(next); onOptionsChange?.(next); }
+  useEffect(() => {
+    if (planningOptions) { setStart(planningOptions.startTerm); setMaxUnits(planningOptions.maxUnits); setAssumeCurrentPass(planningOptions.assumeCurrentPass); }
+  }, [planningOptions]);
   const [didApply, setApplied] = useState(false);
   const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
   const plan = useMemo(() => planCurriculum(courses, options), [courses, options]);
   const applied = didApply && [...plan.assignments].every(([code, index]) => courses.some(c => c.code === code && termIndex(c) === index));
   const dirty = options.startTerm !== start || options.maxUnits !== maxUnits || options.assumeCurrentPass !== assumeCurrentPass;
+  useEffect(() => { onDraftChange?.(dirty); }, [dirty, onDraftChange]);
   const currentLoad = courses.filter(c => c.status === "InCurrentLoad");
   const last = plan.finish ?? Math.max(options.startTerm - 1, ...plan.assignments.values());
   const indexes = Array.from({ length: Math.max(0, last - options.startTerm + 1) }, (_, i) => i + options.startTerm);
@@ -28,7 +33,6 @@ export default function EarliestPath({ courses, yearLevel, onApply, onSelect, on
   const firstTerm = plan.assignments.size ? Math.min(...plan.assignments.values()) : null;
   const activeTerm = selectedTerm !== null && indexes.includes(selectedTerm) ? selectedTerm : firstTerm ?? options.startTerm;
   const activeCourses = courses.filter(c => plan.assignments.get(c.code) === activeTerm);
-  const difference = comparison?.finish != null && plan.finish != null ? plan.finish - comparison.finish : null;
 
   function choosePace(value: number) {
     setMaxUnits(value);
@@ -46,7 +50,7 @@ export default function EarliestPath({ courses, yearLevel, onApply, onSelect, on
           {["Failed", "Dropped", "Incomplete"].includes(course.status) && <em>Retake planned · Passing grade assumed</em>}
           {course.isPinned && <em>Kept in your manually chosen term</em>}
         </span>
-        <span className="path-course-offering"><small>Inferred offering</small><strong>Term {course.originalTerm} each year</strong></span>
+        <span className="path-course-offering"><small>{offeringSource(course)}</small><strong>{offeringLabel(course)}</strong></span>
         <ArrowRight size={16} aria-hidden="true" />
       </button>
       <button className="trace-link" aria-label={`Trace ${course.code}`} onClick={() => onTrace(course.code)}>Trace <Route size={14} /></button>
@@ -72,7 +76,7 @@ export default function EarliestPath({ courses, yearLevel, onApply, onSelect, on
           {currentLoad.length > 0 && <label className="path-assumption"><input type="checkbox" checked={assumeCurrentPass} onChange={e => setAssumeCurrentPass(e.target.checked)} /><span>Assume I pass my {currentLoad.length} current course{currentLoad.length === 1 ? "" : "s"}</span></label>}
           <button className="primary-button" type="submit"><Route size={17} />Update my route</button>
         </form>
-        <div className="offering-note"><Info size={17} /><div><strong>Where offerings come from</strong><p>Term numbers in your file are treated as annual offerings. For example, Term 3 repeats each year. Confirm the actual schedule with your school.</p></div></div>
+        <div className="offering-note"><Info size={17} /><div><strong>Where offerings come from</strong><p>Imported term numbers are treated as annual offerings. Open a course to set multiple offering terms. Custom terms are your assumptions; confirm the actual schedule with your school.</p></div></div>
         <details className="plan-assumptions"><summary>Planning assumptions</summary><p>Three terms per year. Prerequisites must finish earlier; corequisites may finish together. Passing grades are assumed. {options.assumeCurrentPass ? "Current courses count as passed after their planned term." : "Current courses are rescheduled."} Original year placement is not a standing requirement. Manual placements are kept. Additional school restrictions are not modeled.</p></details>
         </details>
       </div>
@@ -80,17 +84,15 @@ export default function EarliestPath({ courses, yearLevel, onApply, onSelect, on
           {!plan.provenEarliest && !plan.unresolved.length && plan.assignments.size > 0 && <p className="path-model">We compared two scheduling orders. Without the unit limit, the earliest modeled finish is {plan.earliestPossibleFinish ? termLabel(plan.earliestPossibleFinish) : "unresolved"}.</p>}
           {plan.unresolved.length > 0 && <div className="path-problems" role="alert"><strong>A whole-curriculum finish is not available yet.</strong><p>Review these courses. The courses we can schedule still appear below.</p><ul>{plan.unresolved.map(item => <li key={item.code}><button onClick={() => onSelect(item.code)}>{item.code}</button><span>{item.reason}</span></li>)}</ul></div>}
           {indexes.length > 0 && <div className="route-focus">
-            <section className="route-current" aria-labelledby="active-term-title">
+            <section key={activeTerm} className="route-current" aria-labelledby="active-term-title">
               <nav className="route-term-nav" aria-label="Choose a suggested term">{indexes.map(index => <button key={index} aria-pressed={activeTerm === index} onClick={event => { setSelectedTerm(index); event.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" }); }}><span>Year {Math.floor((index - 1) / 3) + 1}</span><strong>Term {(index - 1) % 3 + 1}</strong>{index === last ? <Flag size={12} /> : <i />}</button>)}</nav>
               <div className="next-heading"><div className="active-term-heading"><span className="active-term-icon"><Layers size={20} /></span><div><span className="section-index">{activeTerm === firstTerm ? "YOUR NEXT STEP" : "A STEP AHEAD"}</span><h3 id="active-term-title">{termLabel(activeTerm)}</h3></div></div><span>{activeCourses.length} course{activeCourses.length === 1 ? "" : "s"} · {activeCourses.reduce((sum,c) => sum + c.creditUnits,0)} units</span></div>
               {firstTerm && firstTerm > options.startTerm && activeTerm === firstTerm && <p className="waiting-note"><CalendarDays size={17} /> Your first eligible offering is {firstTerm - options.startTerm} term{firstTerm - options.startTerm === 1 ? "" : "s"} after your chosen start.</p>}
               {activeCourses.length ? <ul className="path-courses">{activeCourses.map(c => courseRow(c,true))}</ul> : <div className="route-wait"><CalendarDays size={23} /><h4>A waiting term.</h4><p>No eligible courses fit this term’s offerings and requirements. Select the next term to see what follows.</p></div>}
-              <p className="route-footnote">Offerings are inferred from your file. Passing grades and three terms per year are assumed.</p>
+              <p className="route-footnote">Offerings follow your imported or custom terms. Passing grades and three terms per year are assumed.</p>
             </section>
             <aside className="connected-path" aria-labelledby="connected-title"><span className="connected-icon"><GitBranch size={19} /></span><span className="section-index">THE CONNECTED PATH</span><h3 id="connected-title">One step opens<br />the next.</h3>{plan.criticalPath.length ? <ol>{plan.criticalPath.map((code,i) => <li key={code}><button onClick={() => onSelect(code)}><span>{i + 1}</span><div><small>{code}</small><strong>{courses.find(c => c.code === code)?.title}</strong><small>{termLabel(plan.assignments.get(code)!)}</small></div><ArrowRight size={13} /></button></li>)}</ol> : <p>Your remaining course requirements appear in the route.</p>}<p>This scheduled dependency chain ends in the last planned term. Open a course to see its requirements.</p></aside>
           </div>}
-          {plan.assignments.size > 0 && <div className="compare-section"><div><GitCompareArrows size={19} /><div><strong>Try another pace</strong><p>Keep this result, then change your settings to compare.</p></div></div><button className="secondary-button" disabled={dirty} onClick={() => setComparison({ finish: plan.finish, options: { ...options }, unresolved: plan.unresolved.length })}>{comparison ? "Replace comparison" : "Keep for comparison"}</button></div>}
-          {comparison && <section className="comparison-panel" aria-label="Route comparison"><div className="comparison-heading"><h3>Your route comparison</h3><button className="icon-button" aria-label="Clear comparison" onClick={() => setComparison(null)}><X size={17} /></button></div><div className="comparison-values"><div><span>Saved result · {comparison.options.maxUnits} units</span><strong>{comparison.finish !== null && !comparison.unresolved ? termLabel(comparison.finish) : "Incomplete"}</strong><small>Starts {termLabel(comparison.options.startTerm)}</small></div><div><span>Current result · {options.maxUnits} units</span><strong>{plan.finish !== null && !plan.unresolved.length ? termLabel(plan.finish) : "Incomplete"}</strong><small>Starts {termLabel(options.startTerm)}</small></div></div><p role="status">{dirty ? "Update your route to compare the new settings." : difference === null || comparison.unresolved || plan.unresolved.length ? "Resolve the remaining courses before comparing finish dates." : difference === 0 ? "Both results have the same projected finish." : `The current result finishes ${Math.abs(difference)} term${Math.abs(difference) === 1 ? "" : "s"} ${difference > 0 ? "later" : "earlier"} than the saved result.`}</p><small>Saved result is a snapshot. It stays fixed when course data changes.</small></section>}
           {indexes.length > 0 && <details className="full-route" open={courses.some(c => c.isPinned)}><summary className="section-heading compact"><div><span className="section-index">THE FULL PICTURE</span><h3>Your term-by-term route</h3></div><span>{indexes.length} terms <ChevronDown size={16} /></span></summary><ol className="path-timeline" aria-label="Suggested course schedule">{indexes.map((index, position) => {
             const items = courses.filter(c => plan.assignments.get(c.code) === index);
             const units = items.reduce((s,c) => s + c.creditUnits,0);

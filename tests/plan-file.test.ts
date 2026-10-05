@@ -1,7 +1,58 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { normalizeCurriculum } from "../lib/curriculum";
-import { parsePlanFile, serializePlanFile } from "../lib/plan-file";
+import { parsePlanFile, parseWorkspaceFile, serializePlanFile } from "../lib/plan-file";
+
+test("workspace downloads retain route settings and named scenario schedules", () => {
+  const curriculum = normalizeCurriculum({ program: "Example", courses: [
+    { code: "A", year: 1, term: 3, creditUnits: 3, offeredTerms: [1, 3] },
+  ] });
+  const options = { startTerm: 4, maxUnits: 12, assumeCurrentPass: false };
+  const scenario = { id: "lighter", name: "Lighter workload", savedAt: "2026-10-05T00:00:00.000Z", curriculum, options };
+  const saved = JSON.parse(serializePlanFile(curriculum, { options, scenarios: [scenario] }));
+  assert.equal(saved.formatVersion, 2);
+  assert.deepEqual(saved.options, options);
+  assert.equal(saved.scenarios[0].curriculum.courses[0].originalTerm, 3);
+  assert.deepEqual(parsePlanFile(saved).courses[0].offeredTerms, [1, 3]);
+  assert.deepEqual(parseWorkspaceFile(saved), { curriculum, options, scenarios: [scenario] });
+});
+
+test("version 1 plans reopen with safe default settings and no scenarios", () => {
+  const curriculum = normalizeCurriculum({ yearLevel: 2, courses: [{ code: "A", year: 1, term: 3, isPinned: true, status: "Failed" }] });
+  const workspace = parseWorkspaceFile({ format: "pathwise-plan", formatVersion: 1, curriculum });
+  assert.deepEqual(workspace.curriculum, curriculum);
+  assert.deepEqual(workspace.options, { startTerm: 4, maxUnits: 18, assumeCurrentPass: true });
+  assert.deepEqual(workspace.scenarios, []);
+});
+
+test("a workspace with requirement review warnings can save and reopen its scenarios", () => {
+  const curriculum = normalizeCurriculum({ courses: [{ code: "A", year: 1, term: 1, prerequisites: "faculty approval" }] });
+  assert.ok(curriculum.courses[0].requirementWarnings.length > 0);
+  const options = { startTerm: 1, maxUnits: 18, assumeCurrentPass: true };
+  const scenario = { id: "one", name: "Review", savedAt: "2026-10-05T00:00:00Z", curriculum, options };
+  const restored = parseWorkspaceFile(JSON.parse(serializePlanFile(curriculum, { options, scenarios: [scenario] })));
+  assert.deepEqual(restored.curriculum.courses[0].requirementWarnings, curriculum.courses[0].requirementWarnings);
+  assert.deepEqual(restored.scenarios[0].curriculum.courses[0].requirementWarnings, curriculum.courses[0].requirementWarnings);
+});
+
+test("saved workspaces reject invalid settings and mismatched or duplicate scenarios", () => {
+  const curriculum = normalizeCurriculum({ program: "Example", courses: [{ code: "A", year: 1, term: 1 }] });
+  const file = JSON.parse(serializePlanFile(curriculum));
+  for (const maxUnits of [0, 61, "12"]) {
+    assert.throws(() => parseWorkspaceFile({ ...file, options: { ...file.options, maxUnits } }), /unit limit/);
+  }
+  const scenario = { id: "one", name: "Example", savedAt: "2026-10-05T00:00:00Z", curriculum, options: file.options };
+  assert.throws(() => parseWorkspaceFile({ ...file, scenarios: [scenario, scenario] }), /identifier/);
+  assert.throws(() => parseWorkspaceFile({ ...file, scenarios: [{ ...scenario, curriculum: { ...curriculum, program: "Other" } }] }), /does not match/);
+  assert.throws(() => parseWorkspaceFile({ ...file, scenarios: [{ ...scenario, name: " " }] }), /invalid name/);
+  for (const change of [{ specialization: "Other" }, { units: { ...curriculum.units, required: 200 } }]) {
+    assert.throws(() => parseWorkspaceFile({ ...file, scenarios: [{ ...scenario, curriculum: { ...curriculum, ...change } }] }), /does not match/);
+  }
+  for (const change of [{ creditUnits: 8 }, { originalTerm: 3 }, { prerequisites: ["MISSING"], prerequisiteGroups: [["MISSING"]] }, { title: "Different course" }]) {
+    const altered = { ...curriculum, courses: curriculum.courses.map(c => ({ ...c, ...change })) };
+    assert.throws(() => parseWorkspaceFile({ ...file, scenarios: [{ ...scenario, curriculum: altered }] }), /does not match/);
+  }
+});
 
 test("saved PathWise plans reopen with placement, status, and offering data intact", () => {
   const curriculum = normalizeCurriculum({

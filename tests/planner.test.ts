@@ -7,6 +7,15 @@ import { useCurriculumStore } from "../lib/store";
 const options = { startTerm: 1, maxUnits: 18, assumeCurrentPass: true };
 const courses = (rows: object[]) => normalizeCurriculum({ courses: rows }).courses;
 
+test("custom offerings schedule across multiple terms without changing the imported term", () => {
+  const input = courses([
+    { code: "A", year: 1, term: 1, creditUnits: 3 },
+    { code: "B", year: 1, term: 3, creditUnits: 3, prerequisites: ["A"], offeredTerms: [2, 3] },
+  ]);
+  assert.equal(planCurriculum(input, options).assignments.get("B"), 2);
+  assert.equal(input[1].originalTerm, 3);
+});
+
 test("a term 3 offering waits for the next year when its prerequisite finishes in term 3", () => {
   const input = courses([
     { code: "A", year: 1, term: 3, creditUnits: 3 },

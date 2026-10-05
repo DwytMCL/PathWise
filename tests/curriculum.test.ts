@@ -2,6 +2,18 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { analyze, courseConnections, normalizeCurriculum } from "../lib/curriculum";
 
+test("offering warnings and waits use custom terms", () => {
+  const { courses } = normalizeCurriculum({ courses: [
+    { code: "A", year: 1, term: 1 },
+    { code: "B", year: 1, term: 2, prerequisites: ["A"], offeredTerms: [2, 3] },
+  ] });
+  courses[0].term = 2;
+  assert.deepEqual(analyze(courses).availabilityRisks, [{ code: "B", terms: 1, nextYear: 1 }]);
+  courses[1].term = 3;
+  assert.equal(analyze(courses).offeringConflicts.length, 1); // Only A is outside its offering.
+  assert.equal(analyze(courses).offeringConflicts[0].code, "A");
+});
+
 test("full dependency chains include prerequisites of corequisites and terminate mutual corequisite cycles", () => {
   const { courses } = normalizeCurriculum({ courses: [
     { code: "A", year: 1, term: 2, corequisites: ["B"] },

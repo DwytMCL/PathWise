@@ -1,4 +1,4 @@
-import { termIndex, type Course } from "./curriculum";
+import { isOffered, termIndex, type Course } from "./curriculum";
 
 export type PlanOptions = { startTerm: number; maxUnits: number; assumeCurrentPass: boolean };
 export const isComplete = (course: Course) => course.status === "Taken" || course.status === "Exempted";
@@ -44,7 +44,7 @@ export function planCurriculum(courses: Course[], options: PlanOptions) {
           if (bundle.has(code)) return true;
           const item = byCode.get(code);
           if (!item) return false;
-          if (item.isPinned ? termIndex(item) !== index : item.originalTerm !== (index - 1) % 3 + 1) return false;
+          if (item.isPinned ? termIndex(item) !== index : !isOffered(item, (index - 1) % 3 + 1)) return false;
           const prerequisites = item.prerequisiteGroups ?? item.prerequisites.map(pre => [pre]);
           if (prerequisites.some(group => !group.some(pre => finished.has(pre) && finished.get(pre)! < index))) return false;
           bundle.add(code);

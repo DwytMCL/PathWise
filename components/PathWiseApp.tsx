@@ -316,14 +316,16 @@ export default function PathWiseApp() {
     <a className="skip-link" href="#main-content">Skip to main content</a>
     {curriculum && <>
       <aside className="workspace-rail">
-        <Link className="brand" href="/" aria-label="PathWise home" onClick={e => { e.preventDefault(); setPendingExit(true); }}><Image src="/pathwise-logo.svg" alt="PathWise" width={152} height={39} priority /></Link>
-        <div className="rail-program"><span><GraduationCap size={21} /></span><div><strong>{curriculum.program}</strong><small>{curriculum.curriculumYear ? `${curriculum.curriculumYear} curriculum` : "My curriculum"}</small></div></div>
-        <nav className="workspace-view-nav" aria-label="Plan views">
-          <button disabled={setupActive} aria-pressed={view === "path"} onClick={() => switchView("path")}><Route size={17} /> My route</button>
-          <button disabled={setupActive} aria-pressed={view === "board"} onClick={() => switchView("board")}><LayoutGrid size={17} /> Term board</button>
-          <button disabled={setupActive} aria-pressed={view === "graph"} onClick={() => switchView("graph")}><GitBranch size={17} /> Dependencies</button>
-        </nav>
-        <div className="rail-privacy"><LockKeyhole size={17} /><p>Your file.<br />Your device.<br />Your bigger picture.</p><small>Download your plan or enable device autosave to keep your changes.</small></div>
+        <div className="workspace-rail-content">
+          <Link className="brand" href="/" aria-label="PathWise home" onClick={e => { e.preventDefault(); setPendingExit(true); }}><Image src="/pathwise-logo.svg" alt="PathWise" width={152} height={39} priority /></Link>
+          <div className="rail-program"><span><GraduationCap size={21} /></span><div><strong>{curriculum.program}</strong><small>{curriculum.curriculumYear ? `${curriculum.curriculumYear} curriculum` : "My curriculum"}</small></div></div>
+          <nav className="workspace-view-nav" aria-label="Plan views">
+            <button disabled={setupActive} aria-pressed={view === "path"} onClick={() => switchView("path")}><Route size={17} /> My route</button>
+            <button disabled={setupActive} aria-pressed={view === "board"} onClick={() => switchView("board")}><LayoutGrid size={17} /> Term board</button>
+            <button disabled={setupActive} aria-pressed={view === "graph"} onClick={() => switchView("graph")}><GitBranch size={17} /> Dependencies</button>
+          </nav>
+          <div className="rail-privacy"><LockKeyhole size={17} /><p>Your file.<br />Your device.<br />Your bigger picture.</p><small>Download your plan or enable device autosave to keep your changes.</small></div>
+        </div>
       </aside>
       <header className="topbar"><span className="workspace-breadcrumb">{view === "path" ? "My route" : view === "board" ? "Term board" : "Dependencies"}<ChevronRight size={13} /><span>{curriculum.program}</span></span><span className="session-label"><LockKeyhole size={14} /> {device.enabled ? "Device autosave on" : "Private browser session"}</span></header>
     </>}

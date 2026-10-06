@@ -120,6 +120,42 @@
 .footer .brand { width: 104px; }
 .footer > span,.footer > a { font-size: 10px; color: #626b75; }
 .footer > a { display: flex; align-items: center; gap: 8px; }
+/* Content stays visible until the browser has installed the motion observers. */
+.revealLine { display: block; overflow: hidden; padding-bottom: .14em; margin-bottom: -.14em; }
+.revealLine > span { display: block; }
+.horizon [data-parallax] { translate: 0 var(--parallax-y,0px); }
+.horizon[data-motion="ready"] [data-reveal="soft"] { opacity: 1; transform: translate3d(0,0,0); transition: opacity .8s cubic-bezier(.16,1,.3,1),transform 1s cubic-bezier(.16,1,.3,1); }
+.horizon[data-motion="ready"] [data-reveal="soft"]:not([data-revealed]):not(:focus-within) { opacity: 0; transform: translate3d(0,18px,0); }
+.horizon[data-motion="ready"] [data-reveal="heading"] .revealLine > span { opacity: 1; transform: translate3d(0,0,0); transition: transform 1.1s cubic-bezier(.16,1,.3,1),opacity .7s ease; }
+.horizon[data-motion="ready"] [data-reveal="heading"]:not([data-revealed]) .revealLine > span { opacity: 0; transform: translate3d(0,110%,0); }
+.horizon[data-motion="ready"] .revealLine:nth-child(2) > span { transition-delay: .13s; }
+.horizon[data-motion="ready"] .revealLine:nth-child(3) > span { transition-delay: .26s; }
+.horizon[data-motion="ready"] .heroCopy h1 .revealLine:first-child > span { transition-delay: .09s; }
+.horizon[data-motion="ready"] .heroCopy h1 .revealLine:nth-child(2) > span { transition-delay: .22s; }
+.horizon[data-motion="ready"] .heroCopy > p[data-reveal] { transition-delay: .22s; }
+.horizon[data-motion="ready"] .heroActions { transition-delay: .32s; }
+.horizon[data-motion="ready"] .productStage { transition-delay: .18s; }
+.horizon[data-motion="ready"] .focusCopy > p[data-reveal],.horizon[data-motion="ready"] .privateSection > p[data-reveal] { transition-delay: .16s; }
+.horizon[data-motion="ready"] .focusVisual { transition-delay: .12s; }
+.horizon[data-motion="ready"] .startSteps article:nth-child(2) { transition-delay: .08s; }
+.horizon[data-motion="ready"] .startSteps article:nth-child(3) { transition-delay: .16s; }
+.horizon[data-motion="ready"] [data-reveal="soft"]:focus-within { opacity: 1; transform: none; transition: none; }
+.horizon[data-motion="ready"] [data-reveal="heading"]:target .revealLine > span { opacity: 1; transform: none; transition-delay: 0s; }
+/* Start the hero at first paint, so hydration cannot flash then hide its copy. */
+@media (prefers-reduced-motion: no-preference) {
+  .horizon .heroCopy > [data-reveal="soft"],.horizon .productStage { opacity: 1; transform: translate3d(0,0,0); transition: opacity .8s cubic-bezier(.16,1,.3,1),transform 1s cubic-bezier(.16,1,.3,1); }
+  .horizon .heroCopy h1 .revealLine > span { opacity: 1; transform: translate3d(0,0,0); transition: transform 1.1s cubic-bezier(.16,1,.3,1),opacity .7s ease; }
+  .horizon .heroCopy h1 .revealLine:first-child > span { transition-delay: .09s; }
+  .horizon .heroCopy h1 .revealLine:nth-child(2) > span { transition-delay: .22s; }
+  .horizon .heroCopy > p[data-reveal] { transition-delay: .22s; }
+  .horizon .heroCopy > .heroActions[data-reveal] { transition-delay: .32s; }
+  .horizon .productStage { transition-delay: .18s; }
+  .horizon .heroCopy > [data-reveal="soft"]:focus-within { opacity: 1; transform: none; transition: none; }
+  @starting-style {
+    .horizon .heroCopy > [data-reveal="soft"],.horizon .productStage { opacity: 0; transform: translate3d(0,18px,0); }
+    .horizon .heroCopy h1 .revealLine > span { opacity: 0; transform: translate3d(0,110%,0); }
+  }
+}
 @media (max-width: 1150px) {
   .productStage { max-width: 900px; }
   .nextStepFloat { left: 0; width: 183px; padding: 17px; }
@@ -200,6 +236,8 @@
 @media (prefers-reduced-motion: reduce) {
   .pill { transition: none; }
   .pill:hover { transform: none; }
+  .horizon [data-parallax] { translate: none; }
+  .horizon[data-motion="ready"] [data-reveal="soft"],.horizon[data-motion="ready"] [data-reveal="heading"] .revealLine > span { opacity: 1; transform: none; transition: none; }
 }
 .fileHint { font-size: 11px !important; margin-top: 10px !important; color: #626d79; }
 .privateNote { max-width: 560px; margin-inline: auto !important; font-size: 12px !important; }

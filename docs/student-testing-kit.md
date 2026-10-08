@@ -20,6 +20,7 @@ Read the **prompt** aloud. Keep the success criteria to yourself. Start timing a
 
 | # | Prompt to the student | Success criteria for the moderator |
 | --- | --- | --- |
+| 0 | Look at the landing page for a few seconds. What does PathWise help you do, what would you do first, and whose courses are pictured? | Identifies prerequisite/term/workload planning, finds the import action, and understands the preview is fictional. Record the student's exact interpretation before explaining anything. |
 | 1 | Open the provided curriculum. You have completed Foundations of Mathematics. Plan to start in Year 2, Term 1 with at most 12 units per term. Find your projected finish. | Imports the fixture, checks progress and settings, reaches My route; identifies Year 3, Term 2 under the imported offerings. |
 | 2 | Find Applied Mathematics. Explain why it matters and when the app thinks it is offered. Your school also offers it in Term 1. Update that assumption. | Finds MAT102 details; explains remaining connections and deferral consequences; adds Term 1 while retaining Term 2; distinguishes a custom assumption from an official offering. |
 | 3 | Suppose you take Applied Mathematics in Year 3, Term 1. Find out what that would do to your finish before committing. Then cancel. | Opens the move preview, identifies a three-term delay to Year 4, Term 2 and the changed dates; cancels; original placement remains unchanged. |

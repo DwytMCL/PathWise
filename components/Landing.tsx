@@ -2,41 +2,38 @@
 
 import Image from "next/image";
 import { useEffect, useRef } from "react";
-import { ArrowDown, ArrowRight, ArrowUpRight, Check, GitBranch, GraduationCap, Layers, LockKeyhole, Route, SlidersHorizontal, Sparkles, Upload } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight, Check, GitBranch, GraduationCap, Layers, LockKeyhole, Route, SlidersHorizontal, Upload } from "lucide-react";
 import s from "./Landing.module.css";
 
 function Brand() {
-  return <Image src="/pathwise-logo.svg" width={150} height={38} alt="PathWise" className={s.brand} priority />;
+  return <Image src="/pathwise-logo.svg" width={150} height={38} alt="PathWise" className={s.brand} />;
 }
 
 function HeadingLines({ lines }: { lines: string[] }) {
   return lines.map((line, index) => <span className={s.revealLine} key={line}><span>{line}{index < lines.length - 1 ? " " : ""}</span></span>);
 }
 
-// A presentation of fictional courses, never an imported or saved student plan.
+// A static, internally consistent fictional route. Never reads the student's workspace.
 function PlannerPreview() {
-  return <div className={s.productStage} data-reveal="soft" data-revealed="true" aria-hidden="true">
-    <div className={s.stageReflection} />
-    <div className={s.productWindow} data-parallax="-0.035">
-      <div className={s.windowChrome}><span className={s.windowDots}><i /><i /><i /></span><span><LockKeyhole size={10} /> PathWise / My route</span><span className={s.windowAction}><ArrowUpRight size={12} /></span></div>
+  return <figure className={s.productStage} aria-labelledby="example-caption">
+    <div className={s.productWindow} data-reveal="soft" data-revealed="true">
+      <div className={s.windowChrome}><span><i /><i /><i /></span><span><LockKeyhole size={12} /> A little more perspective</span><span>PathWise</span></div>
       <div className={s.windowContent}>
-        <div className={s.windowRail}><Brand /><div className={s.miniProgram}><GraduationCap size={17} /><span>Computer science<small>Example curriculum</small></span></div><div className={s.miniNav}><span><Route size={14} /> My route</span><span><Layers size={14} /> Term board</span><span><GitBranch size={14} /> Requirements</span></div><span className={s.miniPrivacy}><LockKeyhole size={11} /> Private on your device</span></div>
+        <div className={s.windowRail} aria-hidden="true"><Brand /><div className={s.miniProgram}><GraduationCap size={20} /><span>Example Program<small>Fictional curriculum</small></span></div><div className={s.miniNav}><span><Route size={16} />My route</span><span><Layers size={16} />Term board</span><span><GitBranch size={16} />Dependencies</span></div><span className={s.miniPrivacy}><LockKeyhole size={13} /> Yours to explore.</span></div>
         <div className={s.windowPlan}>
-          <div className={s.miniHeading}><div><small>YOUR WAY FORWARD</small><h2>A plan you can see.</h2></div><span><Check size={10} /> Ready to explore</span></div>
-          <div className={s.miniForecast}><span><small>Projected finish</small><strong>Year 4 · Term 1</strong></span><span><strong>4</strong><small>terms ahead</small></span><span><strong>33</strong><small>units left</small></span></div>
-          <div className={s.miniTerm}><strong>Year 3 · Term 1</strong><span>Up next / 12 units</span></div>
-          <div className={s.miniCourseList}>{[
-            { title: "Data structures", code: "CS201", offering: "Terms 1 & 3", Icon: GitBranch },
-            { title: "Discrete mathematics", code: "MA202", offering: "Every term", Icon: Layers },
-            { title: "Computer systems", code: "CS203", offering: "Term 1 only", Icon: Route },
-          ].map(({title,code,offering,Icon}) => <div key={code}><span className={s.miniCourseIcon}><Icon size={15} /></span><span><strong>{title}</strong><small>{code} · 3 units</small></span><span className={s.miniOffering}>{offering}</span><ArrowRight size={13} /></div>)}</div>
-          <div className={s.miniChain}>{["Data structures", "Algorithms", "Software studio", "Capstone"].map((label,i) => <span key={label}>{label}{i < 3 && <ArrowRight size={10} />}</span>)}</div>
+          <div className={s.previewHeading}><span className={s.sectionLabel}>YOUR BIGGER PICTURE</span><span className={s.exampleBadge}>Example curriculum</span></div>
+          <div className={s.miniForecast}><div><span>Projected finish</span><strong>Year 3 <span>·</span> Term 2</strong><small>Fastest route found · Based on example assumptions</small></div><div className={s.remaining}><strong>10</strong><span>units remaining</span></div></div>
+          <div className={s.miniTerm}><h2>Upcoming terms</h2><span>4 courses · A plan you can follow</span></div>
+          <ol className={s.miniCourseList}>{[
+            { title: "Applied Mathematics", code: "MAT102 · 3 units", date: "Year 2 · Term 2", Icon: GitBranch },
+            { title: "Systems Analysis + lab", code: "SCI201 + SCI201L · 4 units", date: "Year 3 · Term 1", Icon: Layers },
+            { title: "Final Project", code: "PRJ301 · 3 units", date: "Year 3 · Term 2", Icon: GraduationCap },
+          ].map(({title,code,date,Icon},i) => <li key={code}><span className={s.miniCourseIcon}><Icon size={19} /></span><span className={s.miniCourseName}><strong>{title}</strong><small>{code}</small></span><span className={s.miniDate}>{date}{i===2 && <span>Projected finish</span>}</span></li>)}</ol>
         </div>
       </div>
     </div>
-    <div className={s.nextStepFloat} data-parallax="-0.1"><span className={s.floatIcon}><GitBranch size={24} /></span><span className={s.floatLabel}>Your next step</span><strong>Data structures</strong><span className={s.floatBody}>A foundation for the<br />courses ahead.</span><span className={s.floatFoot}>Offered in Terms 1 & 3 <ArrowUpRight size={13} /></span></div>
-    <div className={s.finishFloat} data-parallax="-0.065"><div className={s.finishRing}><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="43" fill="none" stroke="#e5edf4" strokeWidth="5" /><circle cx="50" cy="50" r="43" fill="none" stroke="#648ebe" strokeWidth="5" strokeLinecap="round" strokeDasharray="215 270" transform="rotate(-90 50 50)" /></svg><span><GraduationCap size={27} /></span></div><strong>The finish is in view.</strong><span>Year 4 · Term 1</span><div><span><i /> 4 terms ahead</span><ArrowUpRight size={14} /></div></div>
-  </div>;
+    <figcaption id="example-caption">A glimpse of your bigger picture. Shown with fictional courses.</figcaption>
+  </figure>;
 }
 
 export default function Landing({ onOpen, busy }: { onOpen: () => void; busy: boolean }) {
@@ -120,32 +117,38 @@ export default function Landing({ onOpen, busy }: { onOpen: () => void; busy: bo
     return () => { stop(); observer.disconnect(); preference.removeEventListener("change", configure); };
   }, []);
   const steps = [
-    { Icon: Upload, title: "Bring your curriculum", copy: "Open your exported JSON, saved OneMCL page, or a PathWise plan." },
-    { Icon: Route, title: "See the connections", copy: "Find what you can take next, what it unlocks, and when it’s offered." },
-    { Icon: SlidersHorizontal, title: "Find your pace", copy: "Compare course loads, try a change, and save the route that works for you." },
+    { Icon: Upload, title: "Open your curriculum", copy: "Bring your exported JSON, saved HTML page or PathWise plan." },
+    { Icon: SlidersHorizontal, title: "Make it yours", copy: "Confirm your progress, starting term and a workload that fits." },
+    { Icon: Route, title: "See your way through", copy: "Explore the route, try a change and keep the plan that works for you." },
   ];
   return <div className={s.horizon} ref={rootRef}>
     <section className={s.hero} data-parallax-section="hero" aria-labelledby="landing-title">
-      <div className={s.atmosphere} aria-hidden="true"><div className={s.skyLight} data-parallax="0.12" /><div className={s.horizonLight} data-parallax="0.07" /><div className={s.groundLight} /></div>
-      <header className={s.floatingNav}><a href="#landing-title" aria-label="PathWise home"><Brand /></a><nav aria-label="Page navigation"><a href="#how-it-works">How it works</a><a href="#privacy">Your privacy</a></nav><button onClick={onOpen} disabled={busy}>Open curriculum<ArrowUpRight size={13} /></button></header>
+      <div className={s.atmosphere} aria-hidden="true"><div className={s.landscape} data-parallax="0.055">
+        {/* Responsive local derivatives retain the original photograph and avoid a full-size download. */}
+        <picture><source media="(max-width: 760px)" srcSet="/images/blue-horizon-mobile.webp" /><img src="/images/blue-horizon-1920.webp" srcSet="/images/blue-horizon-960.webp 960w, /images/blue-horizon-1920.webp 1920w, /images/blue-horizon-3840.webp 3840w" sizes="100vw" alt="" width={1920} height={889} fetchPriority="high" /></picture>
+      </div></div>
+      <header className={s.floatingNav}><a href="#landing-title" aria-label="PathWise home"><Brand /></a><nav aria-label="Page navigation"><a href="#how-it-works">How it works</a><a href="#privacy">Your privacy</a></nav><button onClick={onOpen} disabled={busy}>Open curriculum<ArrowUpRight size={15} /></button></header>
       <div className={s.heroCopy}>
-        <span className={s.heroEyebrow} data-reveal="soft" data-revealed="true"><Route size={14} /> A clearer way through your degree</span>
-        <h1 id="landing-title" data-reveal="heading" data-revealed="true"><HeadingLines lines={["Your degree.", "Coming into focus."]} /></h1>
-        <p data-reveal="soft" data-revealed="true">See how your courses connect.<br />Find a route that works for what comes next.</p>
-        <div className={s.heroActions} data-reveal="soft" data-revealed="true"><button className={s.pill} onClick={onOpen} disabled={busy}>{busy ? "Reading your file…" : "Open my curriculum"}<ArrowUpRight size={16} /></button><a href="#how-it-works">Take a closer look<ArrowDown size={14} /></a></div>
-        <span className={s.privacyLine}><LockKeyhole size={11} /> No account. Your curriculum stays with you.</span>
-        <p className={s.fileHint}>JSON, saved HTML, or a PathWise plan. You can also drop your file here.</p>
+        <span className={s.heroEyebrow} data-reveal="soft" data-revealed="true"><span /> A little clarity. A world of possibility.</span>
+        <h1 id="landing-title" data-reveal="heading" data-revealed="true"><HeadingLines lines={["Your degree.", "A clearer way through."]} /></h1>
+        <p>Plan your remaining courses around prerequisites,<br className={s.desktopBreak} /> offering terms, and a workload that fits.</p>
+        <div className={s.heroActions}><button className={s.pill} onClick={onOpen} disabled={busy}>{busy ? "Reading your file…" : "Open my curriculum"}<ArrowUpRight size={18} /></button><a href="#how-it-works">Take a closer look<ArrowDown size={15} /></a></div>
+        <span className={s.privacyLine}><LockKeyhole size={13} /> No account. Your curriculum stays in your browser.</span>
+        <span className={s.fileHint}>JSON · Saved HTML · PathWise plan</span>
       </div>
       <PlannerPreview />
-      <p className={s.stageCaption}>A glimpse of your bigger picture. Shown with fictional courses.</p>
     </section>
-    <div className={s.capabilityLine}><span><GitBranch size={16} /> Connected prerequisites</span><span><Layers size={16} /> Offering terms in view</span><span><SlidersHorizontal size={16} /> A pace that works for you</span></div>
-    <section id="how-it-works" className={s.focusSection} data-parallax-section="center" aria-labelledby="focus-title">
-      <div className={s.focusCopy}><span className={s.sectionLabel} data-reveal="soft">MAKE ROOM FOR CLARITY</span><h2 id="focus-title" data-reveal="heading"><HeadingLines lines={["The next course.", "And everything", "it makes possible."]} /></h2><p data-reveal="soft">A curriculum is more than a list. See what’s ready to take, what it unlocks, and when it’s offered—together, in one clear view.</p><button onClick={onOpen} disabled={busy} className={s.textAction}>See your route<ArrowUpRight size={17} /></button></div>
-      <div className={s.focusVisual} data-reveal="soft" aria-hidden="true"><div className={s.focusMain} data-parallax="0.035"><span className={s.focusIcon}><GitBranch size={25} /></span><span className={s.sectionLabel}>COURSE IN FOCUS</span><h3>Data structures</h3><p>CS201 / 3 units</p><div className={s.focusAvailability}><span><i /> When it’s available</span><strong>Terms 1 & 3</strong></div><div className={s.focusFollowing}><span>WHAT IT OPENS</span><div><span>Algorithms</span><ArrowRight size={14} /><span>Software studio</span><ArrowRight size={14} /><GraduationCap size={18} /></div></div></div><div className={s.focusNote} data-parallax="-0.075"><span className={s.noteMark}><Sparkles size={18} /></span><p>Small decisions.<br /><strong>A clearer path forward.</strong></p></div></div>
+    <div className={s.capabilityLine}><span><GitBranch size={18} /> See the connections</span><span><Layers size={18} /> Find the right term</span><span><SlidersHorizontal size={18} /> Choose your pace</span></div>
+    <section id="how-it-works" className={s.focusSection} aria-labelledby="focus-title">
+      <div className={s.featureCopy} data-reveal="soft"><span className={s.sectionLabel}>01 / THE CONNECTIONS</span><h2 id="focus-title">One course.<br /><span>Everything it opens.</span></h2><p>A small decision can shape the terms ahead. See the requirements behind each course, and understand why your next step matters.</p><button onClick={onOpen} disabled={busy} className={s.textAction}>Find your next step<ArrowUpRight size={17} /></button></div>
+      <div className={s.connectionVisual} data-reveal="soft"><span className={s.specimenLabel}>A closer look · Fictional courses</span><div className={s.selectedCourse}><span className={s.courseGlyph}><GitBranch size={25} /></span><div><span className={s.sectionLabel}>COURSE IN FOCUS</span><h3>Applied Mathematics</h3><p>MAT102 · 3 units</p></div><Check size={17} /></div><div className={s.connectionLine} aria-hidden="true" /><div className={s.followingCourses}><span>Later in this prerequisite chain</span><div><span className={s.routeDot} /><div><h3>Systems Analysis</h3><p>SCI201 · Requires MAT102</p></div><ArrowDown size={17} /></div><div><span className={s.routeDot} /><div><h3>Final Project</h3><p>PRJ301 · Requires SCI201</p></div><GraduationCap size={20} /></div></div><p className={s.specimenFootnote}>See each course’s full requirements before planning its place.</p></div>
     </section>
-    <section className={s.startSection} aria-labelledby="steps-title"><span className={s.sectionLabel} data-reveal="soft">FROM YOUR FILE TO YOUR FUTURE</span><h2 id="steps-title" data-reveal="heading"><HeadingLines lines={["A little perspective goes a long way."]} /></h2><div className={s.startSteps}>{steps.map(({Icon,title,copy},index) => <article key={title} data-reveal="soft"><span aria-hidden="true"><Icon size={23} /><small className={s.stepNumber}>0{index + 1}</small></span><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
-    <section id="privacy" className={s.privateSection} aria-labelledby="privacy-title"><span className={s.privateIcon} data-reveal="soft"><LockKeyhole size={23} /></span><h2 id="privacy-title" data-reveal="heading"><HeadingLines lines={["Your plans are personal.", "Let’s keep them that way."]} /></h2><p data-reveal="soft">Your curriculum is processed in your browser.<br />No account, no server upload, no extra hoops.</p><button className={s.pill} onClick={onOpen} disabled={busy}>Take the first step<ArrowUpRight size={16} /></button><p className={s.privateNote}>Download your plan or enable optional device autosave to keep it. Offering terms are inferred from your file; confirm schedules with your school.</p></section>
-    <footer className={s.footer}><Brand /><span>A clearer way through.</span><a href="#landing-title">Back to top<ArrowUpRight size={13} /></a></footer>
+    <section className={s.offeringSection} aria-labelledby="offering-title">
+      <div className={s.offeringVisual} data-reveal="soft"><div className={s.offeringHeader}><Layers size={20} /><strong>Find its window.</strong><span>Annual offerings</span></div><div className={s.termStrip}><span>Term 1</span><span className={s.offeredTerm}>Term 2 <Check size={14} /></span><span>Term 3</span></div><div className={s.offeringCourse}><span className={s.sectionLabel}>APPLIED MATHEMATICS</span><h3>A place in your plan.</h3><dl><div><dt>Offered each year</dt><dd>Term 2</dd></div><div><dt>Planned for</dt><dd>Year 2 · Term 2</dd></div></dl><span className={s.offeringSource}>Inferred from the example curriculum</span></div><p className={s.specimenFootnote}>Fictional example · Confirm offerings with your school.</p></div>
+      <div className={s.featureCopy} data-reveal="soft"><span className={s.sectionLabel}>02 / THE TIMING</span><h2 id="offering-title">The right course.<br /><span>The right term.</span></h2><p>Some courses only come around once a year. Bring those windows into view, then compare a pace that works for your life.</p><p className={s.supportingCopy}>Your route considers course offerings, requirements and your unit limit together. You can review and change the assumptions.</p><button onClick={onOpen} disabled={busy} className={s.textAction}>Make room for your plans<ArrowUpRight size={17} /></button></div>
+    </section>
+    <section className={s.startSection} aria-labelledby="steps-title"><div data-reveal="soft"><span className={s.sectionLabel}>YOUR NEXT CHAPTER</span><h2 id="steps-title">From your file<br /><span>to a clearer plan.</span></h2></div><div className={s.startSteps}>{steps.map(({Icon,title,copy},index) => <article key={title} data-reveal="soft"><span className={s.stepNumber}>0{index+1}<Icon size={22} /></span><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
+    <section id="privacy" className={s.privateSection} aria-labelledby="privacy-title"><div className={s.privateCopy} data-reveal="soft"><span className={s.privateIcon}><LockKeyhole size={23} /></span><span className={s.sectionLabel}>YOUR FILE. YOUR DEVICE. YOUR FUTURE.</span><h2 id="privacy-title">Your plans are personal.<br /><span>Let’s keep them that way.</span></h2><p>Processed in your browser. Save a portable copy,<br className={s.desktopBreak} /> or choose device autosave to pick up where you left off.</p><button className={s.pill} onClick={onOpen} disabled={busy}>Open my curriculum<ArrowUpRight size={18} /></button><span className={s.privateNote}>No account needed. No curriculum upload.</span></div></section>
+    <footer className={s.footer}><Brand /><span>A clearer way through.</span><a className={s.photoCredit} href="https://unsplash.com/photos/silhouette-of-mountains-covered-by-fogs-at-the-horizon-JV78PVf3gGI" target="_blank" rel="noreferrer">Photography by Sergey Pesterev<ArrowUpRight size={12} /></a><a href="#landing-title">Back to top<ArrowUpRight size={14} /></a></footer>
   </div>;
 }

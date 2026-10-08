@@ -1,5 +1,14 @@
 import { analyze, courseConnections, isOffered, termIndex, type Course } from "./curriculum";
-import { isComplete, planCurriculum, type PlanOptions } from "./planner";
+import { isComplete, planCurriculum, type CurriculumPlan, type PlanOptions } from "./planner";
+
+export function countWaitingTerms(plan: CurriculumPlan, courses: Course[], options: PlanOptions): number | null {
+  if (plan.finish === null) return null;
+  const occupied = new Set(plan.assignments.values());
+  if (options.assumeCurrentPass) courses.filter(c => c.status === "InCurrentLoad").forEach(c => occupied.add(termIndex(c)));
+  let waits = 0;
+  for (let term = options.startTerm; term <= plan.finish; term++) if (!occupied.has(term)) waits++;
+  return waits;
+}
 
 export function previewMove(courses: Course[], code: string, destination: number, options: PlanOptions) {
   const course = courses.find(c => c.code === code);

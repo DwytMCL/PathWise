@@ -1,7 +1,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { normalizeCurriculum } from "../lib/curriculum";
-import { previewMove, explainPriority } from "../lib/planning-insights";
+import { previewMove, explainPriority, countWaitingTerms } from "../lib/planning-insights";
+import { planCurriculum } from "../lib/planner";
+
+test("waiting terms include offering gaps but exclude current-load terms", () => {
+  const courses = normalizeCurriculum({ courses: [
+    { code: "A", year: 1, term: 1, creditUnits: 3, status: "InCurrentLoad" },
+    { code: "B", year: 1, term: 3, creditUnits: 3, prerequisites: ["A"] },
+  ] }).courses;
+  const settings = { startTerm: 1, maxUnits: 18, assumeCurrentPass: true };
+  assert.equal(countWaitingTerms(planCurriculum(courses, settings), courses, settings), 1);
+  const unresolved = courses.map(c => ({ ...c, prerequisites: ["MISSING"], prerequisiteGroups: [["MISSING"]], status: "NotYetTaken" as const }));
+  assert.equal(countWaitingTerms(planCurriculum(unresolved, settings), unresolved, settings), null);
+  const completed = courses.map(c => ({ ...c, status: "Taken" as const }));
+  assert.equal(countWaitingTerms(planCurriculum(completed, settings), completed, settings), 0);
+});
 
 const options = { startTerm: 1, maxUnits: 18, assumeCurrentPass: true };
 const curriculum = () => normalizeCurriculum({ courses: [

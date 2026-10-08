@@ -3,6 +3,7 @@ import { ArrowRight, ChevronDown, GitCompareArrows, Pencil, Plus, Trash2, X } fr
 import { offeringLabel, type Curriculum } from "@/lib/curriculum";
 import { isComplete, planCurriculum, termLabel, type CurriculumPlan, type PlanOptions } from "@/lib/planner";
 import { MAX_SCENARIOS, type Scenario } from "@/lib/workspace";
+import { countWaitingTerms } from "@/lib/planning-insights";
 
 const finishText = (finish: number | null) => finish === null ? "Needs review" : finish === 0 ? "Complete" : termLabel(finish);
 
@@ -57,6 +58,15 @@ export default function ScenarioManager({ curriculum, options, plan, scenarios, 
       {compared && <section className="scenario-comparison" aria-label={`Compare with ${compared.scenario.name}`}>
         <div className="comparison-heading"><h3>Current route vs. {compared.scenario.name}</h3><button className="icon-button" aria-label="Close scenario comparison" onClick={() => setComparison(null)}><X size={16} /></button></div>
         <p>{delta === null ? "A route needs review; no complete finish difference is available." : delta === 0 ? "Both routes have the same projected finish." : `This saved scenario finishes ${Math.abs(delta)} term${Math.abs(delta) === 1 ? "" : "s"} ${delta > 0 ? "later" : "earlier"} than your current route.`}</p>
+        {settingsDirty && <p role="status">This comparison uses your applied settings. Update your route to include your edits.</p>}
+        <div className="comparison-overview">{[
+          { label: "Current route", result: plan, settings: options, courses: curriculum.courses },
+          { label: compared.scenario.name, result: compared.result, settings: compared.scenario.options, courses: compared.scenario.curriculum.courses },
+        ].map(({ label, result, settings, courses }, index) => <div key={index}>
+          <span>{label}</span><strong>{finishText(result.finish)}</strong>
+          <dl><div><dt>Workload limit</dt><dd>{settings.maxUnits} units / term</dd></div><div><dt>Starting from</dt><dd>{termLabel(settings.startTerm)}</dd></div><div><dt>Waiting terms</dt><dd>{countWaitingTerms(result, courses, settings) ?? "Needs review"}</dd></div><div><dt>Courses scheduled</dt><dd>{result.assignments.size}</dd></div><div><dt>Needs review</dt><dd>{result.unresolved.length}</dd></div></dl>
+        </div>)}</div>
+        <p className="comparison-changes">{curriculum.courses.filter(course => date(course.code, plan, curriculum.courses, options.assumeCurrentPass) !== date(course.code, compared.result, compared.scenario.curriculum.courses, compared.scenario.options.assumeCurrentPass)).length} course schedule outcomes differ. Review the dates and assumptions below before restoring.</p>
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users can scroll this named table region. */}
         <div className="table-scroll" tabIndex={0} role="region" aria-label="Scenario course schedule comparison"><table><caption>Full course schedules · {options.maxUnits} units now / {compared.scenario.options.maxUnits} units saved</caption><thead><tr><th scope="col">Course</th><th scope="col">Current route</th><th scope="col">{compared.scenario.name}</th></tr></thead><tbody>{curriculum.courses.map(course => <tr key={course.code}><th scope="row">{course.code}<small>{course.title}</small></th><td>{date(course.code, plan, curriculum.courses, options.assumeCurrentPass)}{courseDetails(course.code, curriculum.courses)}</td><td>{date(course.code, compared.result, compared.scenario.curriculum.courses, compared.scenario.options.assumeCurrentPass)}{courseDetails(course.code, compared.scenario.curriculum.courses)}</td></tr>)}</tbody></table></div>
         <small>Restoring also restores the saved statuses and offerings. Undo returns to your current workspace.</small>

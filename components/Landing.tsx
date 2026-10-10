@@ -25,17 +25,17 @@ function PlannerPreview() {
           <div className={s.miniHeading}><div><small>YOUR WAY FORWARD</small><h2>A plan you can see.</h2></div><span><Check size={10} /> Ready to explore</span></div>
           <div className={s.miniForecast}><span><small>Projected finish</small><strong>Year 4 · Term 1</strong></span><span><strong>4</strong><small>terms ahead</small></span><span><strong>33</strong><small>units left</small></span></div>
           <div className={s.miniTerm}><strong>Year 3 · Term 1</strong><span>Up next / 9 units</span></div>
-          <div className={s.miniCourseList}>{[
+          <ul className={s.miniCourseList}>{[
             { title: "Data structures", code: "CS201", offering: "Terms 1 & 3", Icon: GitBranch },
             { title: "Discrete mathematics", code: "MA202", offering: "Every term", Icon: Layers },
             { title: "Computer systems", code: "CS203", offering: "Term 1 only", Icon: Route },
-          ].map(({title,code,offering,Icon}) => <div key={code}><span className={s.miniCourseIcon}><Icon size={15} /></span><span><strong>{title}</strong><small>{code} · 3 units</small></span><span className={s.miniOffering}>{offering}</span><ArrowRight size={13} /></div>)}</div>
+          ].map(({title,code,offering,Icon}) => <li key={code}><span className={s.miniCourseIcon}><Icon size={15} /></span><span><strong>{title}</strong><small>{code} · 3 units</small></span><span className={s.miniOffering}>{offering}</span><ArrowRight size={13} /></li>)}</ul>
           <div className={s.miniChain}>{["Data structures", "Algorithms", "Software studio", "Capstone"].map((label,i) => <span key={label}>{label}{i < 3 && <ArrowRight size={10} />}</span>)}</div>
         </div>
       </div>
     </div>
-    <div className={s.nextStepFloat} data-parallax="-0.1"><span className={s.floatIcon}><GitBranch size={24} /></span><span className={s.floatLabel}>Your next step</span><strong>Data structures</strong><span className={s.floatBody}>A foundation for the<br />courses ahead.</span><span className={s.floatFoot}>Offered in Terms 1 & 3 <ArrowUpRight size={13} /></span></div>
-    <div className={s.finishFloat} data-parallax="-0.065"><div className={s.finishRing} aria-hidden="true"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="43" fill="none" stroke="#e5edf4" strokeWidth="5" /><circle cx="50" cy="50" r="43" fill="none" stroke="#648ebe" strokeWidth="5" strokeLinecap="round" strokeDasharray="215 270" transform="rotate(-90 50 50)" /></svg><span><GraduationCap size={27} /></span></div><strong>The finish is in view.</strong><span>Year 4 · Term 1</span><div><span><i /> 4 terms ahead</span><ArrowUpRight size={14} /></div></div>
+    <div className={s.nextStepFloat} data-parallax="-0.1" aria-hidden="true"><span className={s.floatIcon}><GitBranch size={24} /></span><span className={s.floatLabel}>Your next step</span><strong>Data structures</strong><span className={s.floatBody}>A foundation for the<br />courses ahead.</span><span className={s.floatFoot}>Offered in Terms 1 & 3 <ArrowUpRight size={13} /></span></div>
+    <div className={s.finishFloat} data-parallax="-0.065" aria-hidden="true"><div className={s.finishRing} aria-hidden="true"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="43" fill="none" stroke="#e5edf4" strokeWidth="5" /><circle cx="50" cy="50" r="43" fill="none" stroke="#648ebe" strokeWidth="5" strokeLinecap="round" strokeDasharray="215 270" transform="rotate(-90 50 50)" /></svg><span><GraduationCap size={27} /></span></div><strong>The finish is in view.</strong><span>Year 4 · Term 1</span><div><span><i /> 4 terms ahead</span><ArrowUpRight size={14} /></div></div>
     <figcaption id="example-caption">A glimpse of your bigger picture. Shown with fictional courses.</figcaption>
   </figure>;
 }

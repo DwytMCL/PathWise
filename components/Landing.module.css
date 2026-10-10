@@ -61,15 +61,16 @@
 .miniTerm { display: flex; align-items: center; justify-content: space-between; margin: 22px 0 12px; gap: 10px; }
 .miniTerm strong { font-size: 10px; font-weight: 650; }
 .miniTerm > span { font-size: 9px; color: #606b76; }
-.miniCourseList > div { border: 0; border-top: 1px solid #edf1f5; width: 100%; background: none; padding: 12px 0; display: flex; align-items: center; gap: 11px; text-align: left; }
+.miniCourseList { list-style: none; margin: 0; padding: 0; }
+.miniCourseList > li { border: 0; border-top: 1px solid #edf1f5; width: 100%; background: none; padding: 12px 0; display: flex; align-items: center; gap: 11px; text-align: left; }
 .miniCourseIcon { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 7px; background: #e8f0fc; color: #516e92; }
-.miniCourseList > div:nth-child(2) .miniCourseIcon { background: #f0ebe5; color: #7a6853; }
-.miniCourseList > div:nth-child(3) .miniCourseIcon { background: #e5f0ec; color: #507165; }
-.miniCourseList > div > span:nth-child(2) { flex: 1; }
+.miniCourseList > li:nth-child(2) .miniCourseIcon { background: #f0ebe5; color: #7a6853; }
+.miniCourseList > li:nth-child(3) .miniCourseIcon { background: #e5f0ec; color: #507165; }
+.miniCourseList > li > span:nth-child(2) { flex: 1; }
 .miniCourseList strong { font-size: 13px; font-weight: 650; display: block; }
 .miniCourseList small { font-size: 9px; color: #586879; display: block; margin-top: 4px; }
 .miniOffering { font-size: 9px; color: #526b85; }
-.miniCourseList > div > svg { color: #646c76; }
+.miniCourseList > li > svg { color: #646c76; }
 .miniChain { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; padding: 10px 0 0; border-top: 1px solid #e6edf4; }
 .miniChain > span { display: flex; gap: 7px; align-items: center; font-size: 9px; color: #536c88; }
 .nextStepFloat { position: absolute; left: 0; top: 57px; display: flex; flex-direction: column; align-items: flex-start; text-align: left; width: 206px; padding: 19px 20px; border: 1px solid #ffffffeb; border-radius: 22px; background: #ffffffc9; backdrop-filter: blur(20px); box-shadow: 0 18px 39px #48689129,inset 0 0 0 1px #fff; transform: rotate(-5deg); color: #343d48; }
@@ -212,7 +213,7 @@
   .miniTerm { margin-top: 22px; }
   .miniTerm strong { font-size: 11px; }
   .miniTerm > span { font-size: 10px; }
-  .miniCourseList > div { gap: 9px; padding-block: 15px; }
+  .miniCourseList > li { gap: 9px; padding-block: 15px; }
   .miniCourseList strong { font-size: 13px; }
   .miniCourseList small { font-size: 10px; }
   .miniCourseIcon { flex: none; }

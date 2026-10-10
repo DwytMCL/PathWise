@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, GraduationCap, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, GraduationCap, Search } from "lucide-react";
 import { statuses, type Course, type Curriculum } from "@/lib/curriculum";
 import { isComplete, planCurriculum, termLabel, type PlanOptions } from "@/lib/planner";
 import OfferingEditor from "./OfferingEditor";
@@ -28,7 +28,7 @@ export default function SetupReview({ curriculum, options, onStatus, onOfferings
   const current = courses.filter(c => c.status === "InCurrentLoad");
   function next() { setQuery(""); setStep(value => value + 1); }
   return <section className="setup-review" aria-labelledby="setup-title">
-    <div className="setup-header"><span className="section-index">MAKE IT YOUR PLAN</span><ol className="setup-steps" aria-label="Setup progress">{labels.map((label, i) => <li key={label} aria-current={step === i ? "step" : undefined}><span>{i < step ? <Check size={13} /> : i + 1}</span>{label}</li>)}</ol></div>
+    <div className="setup-header"><span className="section-index">STEP {step + 1} OF 3</span><ol className="setup-steps" aria-label="Setup progress">{labels.map((label, i) => <li key={label} aria-current={step === i ? "step" : undefined}><span>{i < step ? <Check size={14} aria-hidden="true" /> : i + 1}</span>{label}</li>)}</ol></div>
     <h2 id="setup-title" ref={titleRef} tabIndex={-1}>{step === 0 ? "Start with where you are." : step === 1 ? "Make room for your life." : "Your route, with the assumptions in view."}</h2>
     {step === 0 && <>
       <p>We read {courses.length} courses from your file. Confirm what you’ve completed and what you’re taking now.</p>
@@ -40,10 +40,26 @@ export default function SetupReview({ curriculum, options, onStatus, onOfferings
     </>}
     {step === 1 && <form onSubmit={e => { e.preventDefault(); next(); }}>
       <p>Choose your next starting term and a workload you can sustain. You can change these later.</p>
-      <div className="setup-settings"><label>Starting year<input type="number" min={1} max={100} required value={Math.floor((settings.startTerm - 1) / 3) + 1} onChange={e => setSettings({ ...settings, startTerm: (Number(e.target.value) - 1) * 3 + (settings.startTerm - 1) % 3 + 1 })} /></label><label>Starting term<select value={(settings.startTerm - 1) % 3 + 1} onChange={e => setSettings({ ...settings, startTerm: Math.floor((settings.startTerm - 1) / 3) * 3 + Number(e.target.value) })}>{[1, 2, 3].map(term => <option key={term} value={term}>Term {term}</option>)}</select></label><label>Maximum units per term<input type="number" min={1} max={60} step={.5} required value={settings.maxUnits} onChange={e => setSettings({ ...settings, maxUnits: Number(e.target.value) })} /></label></div>
-      <div className="setup-paces" role="group" aria-label="Choose workload"><button type="button" className="secondary-button" aria-pressed={settings.maxUnits === 18} onClick={() => setSettings({ ...settings, maxUnits: 18 })}>18 units</button><button type="button" className="secondary-button" aria-pressed={settings.maxUnits === 12} onClick={() => setSettings({ ...settings, maxUnits: 12 })}>Lighter · 12 units</button></div>
-      {current.length > 0 && <label className="setup-assumption"><input type="checkbox" checked={settings.assumeCurrentPass} onChange={e => setSettings({ ...settings, assumeCurrentPass: e.target.checked })} />Assume I pass my {current.length} current courses after their planned term</label>}
-      <details className="setup-offerings"><summary>Review course offerings</summary><p>Imported term placements are treated as recurring annual offerings. Set multiple terms only when appropriate for your school.</p>{courses.filter(c => !isComplete(c)).map(course => <div key={course.code}><h3>{course.code} · {course.title}</h3><OfferingEditor course={course} onChange={terms => onOfferings(course.code, terms)} /></div>)}</details>
+      <div className="setup-schedule-grid">
+        <fieldset className="setup-group">
+          <legend>When you’ll start</legend>
+          <p>Your next term for taking remaining courses.</p>
+          <div className="setup-settings">
+            <label>Starting year<input type="number" min={1} max={100} required value={Math.floor((settings.startTerm - 1) / 3) + 1} onChange={e => setSettings({ ...settings, startTerm: (Number(e.target.value) - 1) * 3 + (settings.startTerm - 1) % 3 + 1 })} /></label>
+            <label>Starting term<select value={(settings.startTerm - 1) % 3 + 1} onChange={e => setSettings({ ...settings, startTerm: Math.floor((settings.startTerm - 1) / 3) * 3 + Number(e.target.value) })}>{[1, 2, 3].map(term => <option key={term} value={term}>Term {term}</option>)}</select></label>
+          </div>
+        </fieldset>
+        <fieldset className="setup-group">
+          <legend>Your workload</legend>
+          <p>Set a unit limit, or choose a pace below.</p>
+          <div className="setup-settings setup-workload">
+            <label>Maximum units per term<input type="number" min={1} max={60} step={.5} required value={settings.maxUnits} onChange={e => setSettings({ ...settings, maxUnits: Number(e.target.value) })} /></label>
+          </div>
+          <div className="setup-paces" role="group" aria-label="Choose workload">{[18, 12].map(units => <button key={units} type="button" aria-pressed={settings.maxUnits === units} onClick={() => setSettings({ ...settings, maxUnits: units })}><span>{units} units</span>{settings.maxUnits === units && <Check size={15} aria-hidden="true" />}</button>)}</div>
+        </fieldset>
+      </div>
+      {current.length > 0 && <label className="setup-assumption" htmlFor="setup-current-pass"><input id="setup-current-pass" type="checkbox" checked={settings.assumeCurrentPass} onChange={e => setSettings({ ...settings, assumeCurrentPass: e.target.checked })} /><span>Count my current courses as passed<small>Assume I pass my {current.length} current course{current.length === 1 ? "" : "s"} after their planned term.</small></span></label>}
+      <details className="setup-offerings"><summary><CalendarDays size={19} aria-hidden="true" /><span><strong>Review course offerings</strong><small>Check which terms your remaining courses are available.</small></span><ChevronDown size={18} aria-hidden="true" /></summary><div className="setup-offerings-body"><p>Imported term placements are treated as recurring annual offerings. Set multiple terms only when appropriate for your school.</p>{courses.filter(c => !isComplete(c)).map(course => <div key={course.code}><h3>{course.code} · {course.title}</h3><OfferingEditor course={course} onChange={terms => onOfferings(course.code, terms)} /></div>)}</div></details>
       <div className="setup-actions"><button type="button" className="text-button" onClick={() => setStep(0)}><ArrowLeft size={16} />Back</button><button className="primary-button">Review my route <ArrowRight size={16} /></button></div>
     </form>}
     {step === 2 && <>

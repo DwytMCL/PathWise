@@ -3,7 +3,7 @@ import "@xyflow/react/dist/style.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PathWise | Curriculum prerequisite planner",
+  title: "PathWise",
   description: "Import a curriculum to test term changes and trace prerequisite dependencies.",
 };
 

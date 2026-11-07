@@ -1,10 +1,14 @@
 # PathWise
 
+[![CI](https://github.com/DwytMCL/PathWise/actions/workflows/ci.yml/badge.svg)](https://github.com/DwytMCL/PathWise/actions/workflows/ci.yml)
+
+**Live demo:** [path-wise-omega-six.vercel.app](https://path-wise-omega-six.vercel.app/)
+
 PathWise is a browser-based curriculum planner. Import a JSON export from the companion extension or a saved OneMCL curriculum HTML page. The file is parsed in the browser. Plans stay in the current session unless you download a copy or explicitly enable device autosave.
 
 ## Use the website
 
-PathWise runs in a web browser on Windows and macOS; it does not need a desktop installer. After the site is hosted, open its website address in a recent version of Chrome, Edge, Firefox, or Safari. Choose **Open your curriculum**, then select your exported `.json` or saved OneMCL `.html` file in the file picker. Your curriculum stays in that browser session and is not uploaded to the server. New curriculum imports open a three-step review of progress, workload and planning assumptions. Use **Save plan** to download a `.pathwise.json` file preserving planned terms, course statuses, pins, imported and custom offerings, route settings, and named scenarios. Version 1 saved plans still open with default route settings. Reopen that saved file with **Open your curriculum** to continue later.
+PathWise runs in a web browser on Windows and macOS; it does not need a desktop installer. Open [path-wise-omega-six.vercel.app](https://path-wise-omega-six.vercel.app/) in a recent version of Chrome, Edge, Firefox, or Safari. Choose **Open your curriculum**, then select your exported `.json` or saved OneMCL `.html` file in the file picker. Your curriculum stays in that browser session and is not uploaded to the server. New curriculum imports open a three-step review of progress, workload and planning assumptions. Use **Save plan** to download a `.pathwise.json` file preserving planned terms, course statuses, pins, imported and custom offerings, route settings, and named scenarios. Version 1 saved plans still open with default route settings. Reopen that saved file with **Open your curriculum** to continue later.
 
 The file picker works the same way on both systems:
 

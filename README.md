@@ -1,5 +1,7 @@
 # PathWise
 
+[![CI](https://github.com/DwytMCL/PathWise/actions/workflows/ci.yml/badge.svg)](https://github.com/DwytMCL/PathWise/actions/workflows/ci.yml)
+
 PathWise is a browser-based curriculum planner. Import a JSON export from the companion extension or a saved OneMCL curriculum HTML page. The file is parsed in the browser. Plans stay in the current session unless you download a copy or explicitly enable device autosave.
 
 ## Use the website
